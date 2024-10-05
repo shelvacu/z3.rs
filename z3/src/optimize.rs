@@ -7,7 +7,7 @@ use z3_sys::*;
 
 use crate::{
     ast::{Ast, Bool, Dynamic},
-    Context, Model, Optimize, Params, SatResult, Statistics, Symbol,
+    Context, Model, Params, SatResult, Statistics, Symbol,
 };
 
 use num::{
@@ -15,15 +15,20 @@ use num::{
     rational::BigRational,
 };
 
-impl<'ctx> Optimize<'ctx> {
-    unsafe fn wrap(ctx: &'ctx Context, z3_opt: Z3_optimize) -> Optimize<'ctx> {
-        Z3_optimize_inc_ref(ctx.z3_ctx, z3_opt);
-        Optimize { ctx, z3_opt }
-    }
+make_z3_object! {
+    pub struct Optimize<'ctx>
+    where
+        sys_ty: Z3_optimize,
+        inc_ref: Z3_optimize_inc_ref,
+        dec_ref: Z3_optimize_dec_ref,
+        to_str: Z3_optimize_to_string,
+    ;
+}
 
+impl<'ctx> Optimize<'ctx> {
     /// Create a new optimize context.
     pub fn new(ctx: &'ctx Context) -> Optimize<'ctx> {
-        unsafe { Self::wrap(ctx, Z3_mk_optimize(ctx.z3_ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_optimize(*ctx)) }
     }
 
     /// Parse an SMT-LIB2 string with assertions, soft constraints and optimization objectives.
@@ -31,13 +36,9 @@ impl<'ctx> Optimize<'ctx> {
     pub fn from_string<T: Into<Vec<u8>>>(&self, source_string: T) {
         let source_cstring = CString::new(source_string).unwrap();
         unsafe {
-            Z3_optimize_from_string(self.ctx.z3_ctx, self.z3_opt, source_cstring.as_ptr());
+            Z3_optimize_from_string(*self.ctx(), *self, source_cstring.as_ptr());
         }
-    }
-
-    /// Get this optimizers 's context.
-    pub fn get_context(&self) -> &'ctx Context {
-        self.ctx
+        self.check_error().unwrap();
     }
 
     /// Assert hard constraint to the optimization context.
@@ -48,7 +49,8 @@ impl<'ctx> Optimize<'ctx> {
     /// - [`Optimize::maximize()`]
     /// - [`Optimize::minimize()`]
     pub fn assert(&self, ast: &impl Ast<'ctx>) {
-        unsafe { Z3_optimize_assert(self.ctx.z3_ctx, self.z3_opt, ast.get_z3_ast()) };
+        unsafe { Z3_optimize_assert(*self.ctx(), *self, ast.get_z3_ast()) };
+        self.check_error().unwrap();
     }
 
     /// Assert a constraint `a` into the solver, and track it (in the
@@ -68,7 +70,8 @@ impl<'ctx> Optimize<'ctx> {
     /// - [`Optimize::assert_soft()`]
     pub fn assert_and_track(&self, ast: &Bool<'ctx>, p: &Bool<'ctx>) {
         debug!("assert_and_track: {:?}", ast);
-        unsafe { Z3_optimize_assert_and_track(self.ctx.z3_ctx, self.z3_opt, ast.z3_ast, p.z3_ast) };
+        unsafe { Z3_optimize_assert_and_track(*self.ctx(), *self, *ast, *p) };
+        self.check_error().unwrap();
     }
 
     /// Assert soft constraint to the optimization context.
@@ -84,17 +87,18 @@ impl<'ctx> Optimize<'ctx> {
         let weight_string = weight.to_string();
         let weight_cstring = CString::new(weight_string).unwrap();
         let group = group
-            .map(|g| g.as_z3_symbol(self.ctx))
+            .map(|g| g.as_z3_symbol(self.ctx()))
             .unwrap_or_else(std::ptr::null_mut);
         unsafe {
             Z3_optimize_assert_soft(
-                self.ctx.z3_ctx,
-                self.z3_opt,
-                ast.get_z3_ast(),
+                *self.ctx(),
+                *self,
+                *ast,
                 weight_cstring.as_ptr(),
                 group,
             )
         };
+        self.check_error().unwrap();
     }
 
     /// Add a maximization constraint.
@@ -109,7 +113,8 @@ impl<'ctx> Optimize<'ctx> {
             ast.get_sort().kind(),
             SortKind::Int | SortKind::Real | SortKind::BV
         ));
-        unsafe { Z3_optimize_maximize(self.ctx.z3_ctx, self.z3_opt, ast.get_z3_ast()) };
+        unsafe { Z3_optimize_maximize(*self.ctx(), *self, *ast) };
+        self.check_error().unwrap();
     }
 
     /// Add a minimization constraint.
@@ -123,7 +128,8 @@ impl<'ctx> Optimize<'ctx> {
             ast.get_sort().kind(),
             SortKind::Int | SortKind::Real | SortKind::BV
         ));
-        unsafe { Z3_optimize_minimize(self.ctx.z3_ctx, self.z3_opt, ast.get_z3_ast()) };
+        unsafe { Z3_optimize_minimize(*self.ctx(), *self, *ast) };
+        self.check_error().unwrap();
     }
 
     /// Return a subset of the assumptions provided to either the last
@@ -147,22 +153,13 @@ impl<'ctx> Optimize<'ctx> {
     ///
     /// - [`Optimize::check`]
     pub fn get_unsat_core(&self) -> Vec<Bool<'ctx>> {
-        let z3_unsat_core = unsafe { Z3_optimize_get_unsat_core(self.ctx.z3_ctx, self.z3_opt) };
+        let z3_unsat_core = unsafe { Z3_optimize_get_unsat_core(*self.ctx(), *self) };
+        self.check_error().unwrap();
         if z3_unsat_core.is_null() {
             return vec![];
         }
-
-        let len = unsafe { Z3_ast_vector_size(self.ctx.z3_ctx, z3_unsat_core) };
-
-        let mut unsat_core = Vec::with_capacity(len as usize);
-
-        for i in 0..len {
-            let elem = unsafe { Z3_ast_vector_get(self.ctx.z3_ctx, z3_unsat_core, i) };
-            let elem = unsafe { Bool::wrap(self.ctx, elem) };
-            unsat_core.push(elem);
-        }
-
-        unsat_core
+        let z3_unsat_core = unsafe { AstVector::wrap(self.ctx(), z3_unsat_core) };
+        z3_unsat_core.iter().map(|i| i.as_bool().unwrap()).collect()
     }
 
     /// Create a backtracking point.
@@ -175,7 +172,8 @@ impl<'ctx> Optimize<'ctx> {
     ///
     /// - [`Optimize::pop()`]
     pub fn push(&self) {
-        unsafe { Z3_optimize_push(self.ctx.z3_ctx, self.z3_opt) };
+        unsafe { Z3_optimize_push(*self.ctx(), *self) };
+        self.check_error().unwrap();
     }
 
     /// Backtrack one level.
@@ -189,7 +187,8 @@ impl<'ctx> Optimize<'ctx> {
     ///
     /// - [`Optimize::push()`]
     pub fn pop(&self) {
-        unsafe { Z3_optimize_pop(self.ctx.z3_ctx, self.z3_opt) };
+        unsafe { Z3_optimize_pop(*self.ctx(), *self) };
+        self.check_error().unwrap();
     }
 
     /// Check consistency and produce optimal values.
@@ -198,15 +197,15 @@ impl<'ctx> Optimize<'ctx> {
     ///
     /// - [`Optimize::get_model()`]
     pub fn check(&self, assumptions: &[Bool<'ctx>]) -> SatResult {
-        let assumptions: Vec<Z3_ast> = assumptions.iter().map(|a| a.z3_ast).collect();
-        match unsafe {
+        let assumptions: Vec<Z3_ast> = assumptions.iter().map(|a| *a).collect();
+        match self.check_error_pass(unsafe {
             Z3_optimize_check(
-                self.ctx.z3_ctx,
-                self.z3_opt,
+                *self.ctx(),
+                *self,
                 assumptions.len().try_into().unwrap(),
                 assumptions.as_ptr(),
             )
-        } {
+        }).unwrap() {
             Z3_L_FALSE => SatResult::Unsat,
             Z3_L_UNDEF => SatResult::Unknown,
             Z3_L_TRUE => SatResult::Sat,
@@ -227,28 +226,16 @@ impl<'ctx> Optimize<'ctx> {
     ///
     /// This contains maximize/minimize objectives and grouped soft constraints.
     pub fn get_objectives(&self) -> Vec<Dynamic<'ctx>> {
-        let (z3_objectives, len) = unsafe {
-            let objectives = Z3_optimize_get_objectives(self.ctx.z3_ctx, self.z3_opt);
-            let len = Z3_ast_vector_size(self.ctx.z3_ctx, objectives);
-            (objectives, len)
-        };
-
-        let mut objectives = Vec::with_capacity(len as usize);
-
-        for i in 0..len {
-            let elem = unsafe { Z3_ast_vector_get(self.ctx.z3_ctx, z3_objectives, i) };
-            let elem = unsafe { Dynamic::wrap(self.ctx, elem) };
-            objectives.push(elem);
-        }
-
-        objectives
+        let objectives_z = unsafe { AstVector::wrap_check_error(*self.ctx(), Z3_optimize_get_objectives(*self.ctx(), *self)) };
+        objectives_z.iter().collect()
     }
 
     /// Retrieve a string that describes the last status returned by [`Optimize::check()`].
     ///
     /// Use this method when [`Optimize::check()`] returns [`SatResult::Unknown`].
     pub fn get_reason_unknown(&self) -> Option<String> {
-        let p = unsafe { Z3_optimize_get_reason_unknown(self.ctx.z3_ctx, self.z3_opt) };
+        let p = unsafe { Z3_optimize_get_reason_unknown(*self.ctx(), *self) };
+        self.check_error().unwrap();
         if p.is_null() {
             return None;
         }
@@ -260,42 +247,18 @@ impl<'ctx> Optimize<'ctx> {
 
     /// Configure the parameters for this Optimize.
     pub fn set_params(&self, params: &Params<'ctx>) {
-        unsafe { Z3_optimize_set_params(self.ctx.z3_ctx, self.z3_opt, params.z3_params) };
+        unsafe { Z3_optimize_set_params(*self.ctx(), *self, params.z3_params) };
+        self.check_error().unwrap();
     }
 
     /// Retrieve the statistics for the last [`Optimize::check()`].
     pub fn get_statistics(&self) -> Statistics<'ctx> {
         unsafe {
-            Statistics::wrap(
+            Statistics::wrap_check_error(
                 self.ctx,
-                Z3_optimize_get_statistics(self.ctx.z3_ctx, self.z3_opt),
+                Z3_optimize_get_statistics(*self.ctx(), *self),
             )
         }
-    }
-}
-
-impl<'ctx> fmt::Display for Optimize<'ctx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let p = unsafe { Z3_optimize_to_string(self.ctx.z3_ctx, self.z3_opt) };
-        if p.is_null() {
-            return Result::Err(fmt::Error);
-        }
-        match unsafe { CStr::from_ptr(p) }.to_str() {
-            Ok(s) => write!(f, "{s}"),
-            Err(_) => Result::Err(fmt::Error),
-        }
-    }
-}
-
-impl<'ctx> fmt::Debug for Optimize<'ctx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        <Self as fmt::Display>::fmt(self, f)
-    }
-}
-
-impl<'ctx> Drop for Optimize<'ctx> {
-    fn drop(&mut self) {
-        unsafe { Z3_optimize_dec_ref(self.ctx.z3_ctx, self.z3_opt) };
     }
 }
 

@@ -4,14 +4,19 @@ use std::fmt;
 
 use z3_sys::*;
 
-use crate::{ast, ast::Ast, Context, FuncDecl, Sort, Symbol};
+use crate::{ast, ast::Ast, Context, FuncDecl, Sort, Symbol, make_z3_object};
+
+// this is just an Ast aaaa why
+make_z3_object! {
+    pub struct FuncDecl<'ctx>
+    where
+        sys_ty: Z3_func_decl,
+        inc_ref: Z3_inc_ref,
+        dec_ref: Z3_dec_ref,
+    ;
+}
 
 impl<'ctx> FuncDecl<'ctx> {
-    pub(crate) unsafe fn wrap(ctx: &'ctx Context, z3_func_decl: Z3_func_decl) -> Self {
-        Z3_inc_ref(ctx.z3_ctx, Z3_func_decl_to_ast(ctx.z3_ctx, z3_func_decl));
-        Self { ctx, z3_func_decl }
-    }
-
     pub fn new<S: Into<Symbol>>(
         ctx: &'ctx Context,
         name: S,

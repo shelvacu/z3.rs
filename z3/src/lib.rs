@@ -149,15 +149,7 @@ pub use sort::{Sort, SortDiffers};
 pub use ast::IsNotApp;
 pub use ast_vector::AstVector;
 pub use model::Model;
-
-/// Context for solving optimization queries.
-//
-// Note for in-crate users: Never construct an `Optimize` directly; only use
-// `Optimize::new()` which handles Z3 refcounting properly.
-pub struct Optimize<'ctx> {
-    ctx: &'ctx Context,
-    z3_opt: NonNull<Z3_optimize>,
-}
+pub use optimize::Optimize;
 
 /// Function declaration. Every constant and function have an associated declaration.
 ///
