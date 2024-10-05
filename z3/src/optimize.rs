@@ -1,13 +1,13 @@
 use log::debug;
 use std::convert::TryInto;
 use std::ffi::{CStr, CString};
-use std::fmt;
 
 use z3_sys::*;
 
 use crate::{
     ast::{Ast, Bool, Dynamic},
-    Context, Model, Params, SatResult, Statistics, Symbol,
+    Context, Model, Params, SatResult, Statistics, Symbol, AstVector,
+    make_z3_object,
 };
 
 use num::{

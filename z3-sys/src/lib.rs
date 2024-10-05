@@ -1485,7 +1485,7 @@ extern "C" {
     ///
     /// - [`Z3_global_param_get`]
     /// - [`Z3_global_param_reset_all`]
-    pub fn Z3_global_param_set(param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string>);
+    pub fn Z3_global_param_set(param_id: Z3_string, param_value: Z3_string);
 
     /// Restore the value of all global (and module) parameters.
     /// This command will not affect already created objects (such as tactics and solvers).
@@ -1507,7 +1507,7 @@ extern "C" {
     ///
     /// NOTE: This function cannot be invoked simultaneously from different threads without synchronization.
     /// The result string stored in `param_value` is stored in shared location.
-    pub fn Z3_global_param_get(param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string_ptr>) -> bool;
+    pub fn Z3_global_param_get(param_id: Z3_string, param_value: NonNull<Z3_string_ptr>) -> bool;
 
     /// Create a configuration object for the Z3 context object.
     ///
@@ -1553,7 +1553,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_config`]
-    pub fn Z3_set_param_value(c: NonNull<Z3_config>, param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string>);
+    pub fn Z3_set_param_value(c: NonNull<Z3_config>, param_id: Z3_string, param_value: Z3_string);
 
     /// Create a context using the given configuration.
     ///
@@ -1624,7 +1624,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_global_param_set`]
-    pub fn Z3_update_param_value(c: NonNull<Z3_context>, param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string>);
+    pub fn Z3_update_param_value(c: NonNull<Z3_context>, param_id: Z3_string, param_value: Z3_string);
 
     /// Interrupt the execution of a Z3 procedure.
     ///
@@ -1725,7 +1725,7 @@ extern "C" {
     ///
     /// - [`Z3_get_symbol_string`]
     /// - [`Z3_mk_int_symbol`]
-    pub fn Z3_mk_string_symbol(c: NonNull<Z3_context>, s: NonNull<Z3_string>) -> *mut Z3_symbol;
+    pub fn Z3_mk_string_symbol(c: NonNull<Z3_context>, s: Z3_string) -> *mut Z3_symbol;
 
     /// Create a free (uninterpreted) type using the given name (symbol).
     ///
@@ -2065,7 +2065,7 @@ extern "C" {
     /// - [`Z3_mk_func_decl`]
     pub fn Z3_mk_fresh_func_decl(
         c: NonNull<Z3_context>,
-        prefix: NonNull<Z3_string>,
+        prefix: Z3_string,
         domain_size: ::std::os::raw::c_uint,
         domain: *const Z3_sort,
         range: NonNull<Z3_sort>,
@@ -2087,7 +2087,7 @@ extern "C" {
     /// - [`Z3_mk_const`]
     /// - [`Z3_mk_fresh_func_decl`]
     /// - [`Z3_mk_func_decl`]
-    pub fn Z3_mk_fresh_const(c: NonNull<Z3_context>, prefix: NonNull<Z3_string>, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
+    pub fn Z3_mk_fresh_const(c: NonNull<Z3_context>, prefix: Z3_string, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Declare a recursive function
     ///
@@ -2824,7 +2824,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_int`]
     /// - [`Z3_mk_unsigned_int`]
-    pub fn Z3_mk_numeral(c: NonNull<Z3_context>, numeral: NonNull<Z3_string>, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
+    pub fn Z3_mk_numeral(c: NonNull<Z3_context>, numeral: Z3_string, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a real from a fraction.
     ///
@@ -2917,7 +2917,7 @@ extern "C" {
     pub fn Z3_is_string_sort(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> bool;
 
     /// Create a string constant out of the string that is passed in
-    pub fn Z3_mk_string(c: NonNull<Z3_context>, s: NonNull<Z3_string>) -> *mut Z3_ast;
+    pub fn Z3_mk_string(c: NonNull<Z3_context>, s: Z3_string) -> *mut Z3_ast;
 
     /// Determine if `s` is a string constant.
     pub fn Z3_is_string(c: NonNull<Z3_context>, s: NonNull<Z3_ast>) -> bool;
@@ -4668,7 +4668,7 @@ extern "C" {
     ///
     /// - [`Z3_append_log`]
     /// - [`Z3_close_log`]
-    pub fn Z3_open_log(filename: NonNull<Z3_string>) -> bool;
+    pub fn Z3_open_log(filename: Z3_string) -> bool;
 
     /// Append user-defined string to interaction log.
     ///
@@ -4680,7 +4680,7 @@ extern "C" {
     ///
     /// - [`Z3_open_log`]
     /// - [`Z3_close_log`]
-    pub fn Z3_append_log(string: NonNull<Z3_string>);
+    pub fn Z3_append_log(string: Z3_string);
 
     /// Close interaction log.
     ///
@@ -4808,10 +4808,10 @@ extern "C" {
     /// - `formula`: - formula to be checked for consistency in conjunction with assumptions.
     pub fn Z3_benchmark_to_smtlib_string(
         c: NonNull<Z3_context>,
-        name: NonNull<Z3_string>,
-        logic: NonNull<Z3_string>,
-        status: NonNull<Z3_string>,
-        attributes: NonNull<Z3_string>,
+        name: Z3_string,
+        logic: Z3_string,
+        status: Z3_string,
+        attributes: Z3_string,
         num_assumptions: ::std::os::raw::c_uint,
         assumptions: *const Z3_ast,
         formula: NonNull<Z3_ast>,
@@ -4823,7 +4823,7 @@ extern "C" {
     /// in the scope (up to push/pop) at the end of the string.
     pub fn Z3_parse_smtlib2_string(
         c: NonNull<Z3_context>,
-        str: NonNull<Z3_string>,
+        str: Z3_string,
         num_sorts: ::std::os::raw::c_uint,
         sort_names: *const Z3_symbol,
         sorts: *const Z3_sort,
@@ -4835,7 +4835,7 @@ extern "C" {
     /// Similar to [`Z3_parse_smtlib2_string`], but reads the benchmark from a file.
     pub fn Z3_parse_smtlib2_file(
         c: NonNull<Z3_context>,
-        file_name: NonNull<Z3_string>,
+        file_name: Z3_string,
         num_sorts: ::std::os::raw::c_uint,
         sort_names: *const Z3_symbol,
         sorts: *const Z3_sort,
@@ -4848,7 +4848,7 @@ extern "C" {
     /// call is saved so the next evaluation builds on top of the previous call.
     ///
     /// Returns output generated from processing commands.
-    pub fn Z3_eval_smtlib2_string(arg1: NonNull<Z3_context>, str: NonNull<Z3_string>) -> Z3_string;
+    pub fn Z3_eval_smtlib2_string(arg1: NonNull<Z3_context>, str: Z3_string) -> Z3_string;
 
     /// Return the error code for the last API call.
     ///
@@ -4873,7 +4873,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_error_code`]
-    pub fn Z3_set_error_handler(c: NonNull<Z3_context>, h: NonNull<Z3_error_handler>);
+    pub fn Z3_set_error_handler(c: NonNull<Z3_context>, h: Z3_error_handler);
 
     /// Set an error.
     pub fn Z3_set_error(c: NonNull<Z3_context>, e: ErrorCode);
@@ -4906,7 +4906,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_disable_trace`]
-    pub fn Z3_enable_trace(tag: NonNull<Z3_string>);
+    pub fn Z3_enable_trace(tag: Z3_string);
 
     /// Disable tracing messages tagged as `tag` when Z3 is compiled in debug mode.
     /// It is a NOOP otherwise
@@ -4914,7 +4914,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_enable_trace`]
-    pub fn Z3_disable_trace(tag: NonNull<Z3_string>);
+    pub fn Z3_disable_trace(tag: Z3_string);
 
     /// Reset all allocated resources.
     ///
@@ -5032,7 +5032,7 @@ extern "C" {
     /// It may also be obtained using the command `(help-tactic)` in the SMT 2.0 front-end.
     ///
     /// Tactics are the basic building block for creating custom solvers for specific problem domains.
-    pub fn Z3_mk_tactic(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> *mut Z3_tactic;
+    pub fn Z3_mk_tactic(c: NonNull<Z3_context>, name: Z3_string) -> *mut Z3_tactic;
 
     /// Increment the reference counter of the given tactic.
     pub fn Z3_tactic_inc_ref(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>);
@@ -5046,7 +5046,7 @@ extern "C" {
     ///
     /// Probes are used to inspect a goal (aka problem) and collect information that may be used to decide
     /// which solver and/or preprocessing step will be used.
-    pub fn Z3_mk_probe(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> *mut Z3_probe;
+    pub fn Z3_mk_probe(c: NonNull<Z3_context>, name: Z3_string) -> *mut Z3_probe;
 
     /// Increment the reference counter of the given probe.
     pub fn Z3_probe_inc_ref(c: NonNull<Z3_context>, p: NonNull<Z3_probe>);
@@ -5191,10 +5191,10 @@ extern "C" {
     pub fn Z3_tactic_get_param_descrs(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>) -> *mut Z3_param_descrs;
 
     /// Return a string containing a description of the tactic with the given name.
-    pub fn Z3_tactic_get_descr(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> Z3_string;
+    pub fn Z3_tactic_get_descr(c: NonNull<Z3_context>, name: Z3_string) -> Z3_string;
 
     /// Return a string containing a description of the probe with the given name.
-    pub fn Z3_probe_get_descr(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> Z3_string;
+    pub fn Z3_probe_get_descr(c: NonNull<Z3_context>, name: Z3_string) -> Z3_string;
 
     /// Execute the probe over the goal. The probe always produce a double value.
     /// "Boolean" probes return 0.0 for false, and a value different from 0.0 for true.
@@ -5459,7 +5459,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_from_string`]
     /// - [`Z3_solver_to_string`]
-    pub fn Z3_solver_from_file(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, file_name: NonNull<Z3_string>);
+    pub fn Z3_solver_from_file(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, file_name: Z3_string);
 
     /// load solver assertions from a string.
     ///
@@ -5467,7 +5467,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_from_file`]
     /// - [`Z3_solver_to_string`]
-    pub fn Z3_solver_from_string(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, c_str: NonNull<Z3_string>);
+    pub fn Z3_solver_from_string(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, c_str: Z3_string);
 
     /// Return the set of asserted formulas on the solver.
     pub fn Z3_solver_get_assertions(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_ast_vector;
@@ -6022,7 +6022,7 @@ extern "C" {
     pub fn Z3_rcf_del(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>);
 
     /// Return a RCF rational using the given string.
-    pub fn Z3_rcf_mk_rational(c: NonNull<Z3_context>, val: NonNull<Z3_string>) -> *mut Z3_rcf_num;
+    pub fn Z3_rcf_mk_rational(c: NonNull<Z3_context>, val: Z3_string) -> *mut Z3_rcf_num;
 
     /// Return a RCF small integer.
     pub fn Z3_rcf_mk_small_int(c: NonNull<Z3_context>, val: ::std::os::raw::c_int) -> *mut Z3_rcf_num;
@@ -6335,7 +6335,7 @@ extern "C" {
     pub fn Z3_fixedpoint_from_string(
         c: NonNull<Z3_context>,
         f: NonNull<Z3_fixedpoint>,
-        s: NonNull<Z3_string>,
+        s: Z3_string,
     ) -> *mut Z3_ast_vector;
 
     /// Parse an SMT-LIB2 file with fixedpoint rules.
@@ -6350,7 +6350,7 @@ extern "C" {
     ///
     /// - [`Z3_fixedpoint_from_string`]
     /// - [`Z3_fixedpoint_to_string`]
-    pub fn Z3_fixedpoint_from_file(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>, s: NonNull<Z3_string>) -> *mut Z3_ast_vector;
+    pub fn Z3_fixedpoint_from_file(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>, s: Z3_string) -> *mut Z3_ast_vector;
 }
 /// The following utilities allows adding user-defined domains.
 pub type Z3_fixedpoint_reduce_assign_callback_fptr = ::std::option::Option<
@@ -6470,7 +6470,7 @@ extern "C" {
         c: NonNull<Z3_context>,
         o: NonNull<Z3_optimize>,
         a: NonNull<Z3_ast>,
-        weight: NonNull<Z3_string>,
+        weight: Z3_string,
         id: NonNull<Z3_symbol>,
     ) -> ::std::os::raw::c_uint;
 
@@ -6670,7 +6670,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_from_file`]
     /// - [`Z3_optimize_to_string`]
-    pub fn Z3_optimize_from_string(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, s: NonNull<Z3_string>);
+    pub fn Z3_optimize_from_string(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, s: Z3_string);
 
     /// Parse an SMT-LIB2 file with assertions,
     /// soft constraints and optimization objectives.
@@ -6684,7 +6684,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_from_string`]
     /// - [`Z3_optimize_to_string`]
-    pub fn Z3_optimize_from_file(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, s: NonNull<Z3_string>);
+    pub fn Z3_optimize_from_file(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, s: Z3_string);
 
     /// Return a string containing a description of parameters accepted by optimize.
     ///

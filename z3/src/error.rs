@@ -1,10 +1,6 @@
-use core::ptr::NonNull;
-use std::ffi::CStr;
 use std::error::Error as StdError;
 use std::fmt;
-use crate::Context;
 pub use z3_sys::ErrorCode;
-use z3_sys::*;
 
 #[derive(Debug, Clone)]
 pub struct Error {

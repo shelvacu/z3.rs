@@ -1,12 +1,11 @@
 use log::debug;
 use std::ffi::CString;
 use std::ptr::NonNull;
-use std::convert::AsRef;
 use std::marker::PhantomData;
 
 use z3_sys::*;
 
-use crate::{Config, ContextHandle, HasContext};
+use crate::{Config, HasContext};
 
 /// Manager of all other Z3 objects, global configuration options, etc.
 ///
@@ -35,9 +34,9 @@ pub struct Context {
     cfg: Config,
 }
 
-impl<'a> HasContext<'a> for Context {
-    fn ctx(&'a self) -> &'a Self {
-        self
+impl<'a> HasContext<'a> for &'a Context {
+    fn ctx(&self) -> &'a Context {
+        *self
     }
 }
 
@@ -45,13 +44,13 @@ impl Context {
     pub fn new(cfg: Config) -> Context {
         let z3_cfg = unsafe { Z3_mk_config() };
         debug!("new config {:p}", z3_cfg);
-        let z3_cfg:NonNull<Z3_config> = z3_cfg.try_into().unwrap();
+        let z3_cfg:NonNull<Z3_config> = NonNull::new(z3_cfg).unwrap();
         for (k, v) in cfg.kvs.iter() {
-            unsafe { Z3_set_param_value(z3_cfg, k, v) };
+            unsafe { Z3_set_param_value(z3_cfg, k.as_ptr(), v.as_ptr()) };
             // no error handling for this one
         }
 
-        let p = unsafe { Z3_mk_context_rc(z3_cfg) };
+        let p = NonNull::new(unsafe { Z3_mk_context_rc(z3_cfg) }).unwrap();
         debug!("new context {:p}", p);
         unsafe { Z3_set_error_handler(p, None) };
         Context {
@@ -71,7 +70,7 @@ impl Context {
     ///
     /// - [`ContextHandle`]
     /// - [`ContextHandle::interrupt()`]
-    pub fn handle(&'ctx self) -> ContextHandle<'ctx> {
+    pub fn handle<'ctx>(&'ctx self) -> ContextHandle<'ctx> {
         unsafe { ContextHandle::new(*self) }
     }
 
@@ -83,7 +82,7 @@ impl Context {
     pub fn update_param_value(&mut self, k: &str, v: &str) {
         let ks = CString::new(k).unwrap();
         let vs = CString::new(v).unwrap();
-        unsafe { Z3_update_param_value(self.z3_ctx, ks.as_ptr(), vs.as_ptr()) };
+        unsafe { Z3_update_param_value(*self, ks.as_ptr(), vs.as_ptr()) };
     }
 
     /// Update a global parameter.
@@ -133,6 +132,14 @@ unsafe impl<'ctx> Send for ContextHandle<'ctx> {}
 
 impl Drop for Context {
     fn drop(&mut self) {
-        unsafe { Z3_del_context(self.z3_ctx) };
+        unsafe { Z3_del_context(**self) };
+    }
+}
+
+impl std::ops::Deref for Context {
+    type Target = NonNull<Z3_context>;
+
+    fn deref(&self) -> &NonNull<Z3_context> {
+        &self.ptr
     }
 }
