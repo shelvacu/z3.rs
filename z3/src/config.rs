@@ -1,9 +1,17 @@
 use log::debug;
 use std::ffi::CString;
+use std::ptr::NonNull;
+use std::convert::AsRef;
 
 use z3_sys::*;
 
-use crate::Config;
+/// Configuration used to initialize [logical contexts](Context).
+///
+/// - [`Context::new()`]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Config {
+    pub(crate) kvs: Vec<(CString, CString)>,
+}
 
 impl Config {
     /// Create a configuration object for the Z3 context object.
@@ -25,11 +33,6 @@ impl Config {
     pub fn new() -> Config {
         Config {
             kvs: Vec::new(),
-            z3_cfg: unsafe {
-                let p = Z3_mk_config();
-                debug!("new config {:p}", p);
-                p
-            },
         }
     }
 
@@ -38,17 +41,10 @@ impl Config {
     /// # See also
     ///
     /// - [`Config::set_bool_param_value()`]
-    pub fn set_param_value(&mut self, k: &str, v: &str) {
-        let ks = CString::new(k).unwrap();
-        let vs = CString::new(v).unwrap();
-        self.kvs.push((ks, vs));
-        unsafe {
-            Z3_set_param_value(
-                self.z3_cfg,
-                self.kvs.last().unwrap().0.as_ptr(),
-                self.kvs.last().unwrap().1.as_ptr(),
-            );
-        };
+    pub fn set_param_value(&mut self, k: impl AsRef<str>, v: impl AsRef<str>) {
+        let ks = CString::new(k.as_ref()).unwrap();
+        let vs = CString::new(v.as_ref()).unwrap();
+        let (kr, vr) = self.kvs.push((ks, vs));
     }
 
     /// Set a configuration parameter.
@@ -58,7 +54,7 @@ impl Config {
     /// # See also
     ///
     /// - [`Config::set_param_value()`]
-    pub fn set_bool_param_value(&mut self, k: &str, v: bool) {
+    pub fn set_bool_param_value(&mut self, k: impl AsRef<str>, v: bool) {
         self.set_param_value(k, if v { "true" } else { "false" });
     }
 

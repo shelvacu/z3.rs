@@ -6,6 +6,7 @@
 #![warn(clippy::doc_markdown)]
 #![deny(missing_debug_implementations)]
 
+use core::ptr::NonNull;
 use std::ffi::CString;
 use z3_sys::*;
 pub use z3_sys::{AstKind, GoalPrec, SortKind};
@@ -14,6 +15,7 @@ pub mod ast;
 mod config;
 mod context;
 pub mod datatype_builder;
+pub mod error;
 mod func_decl;
 mod func_entry;
 mod func_interp;
@@ -36,53 +38,9 @@ pub use crate::params::{get_global_param, reset_all_global_params, set_global_pa
 pub use crate::statistics::{StatisticsEntry, StatisticsValue};
 pub use crate::version::{full_version, version, Version};
 
-/// Configuration used to initialize [logical contexts](Context).
-///
-/// # See also:
-///
-/// - [`Context::new()`]
-#[derive(Debug)]
-pub struct Config {
-    kvs: Vec<(CString, CString)>,
-    z3_cfg: Z3_config,
-}
+pub use config::Config;
 
-/// Manager of all other Z3 objects, global configuration options, etc.
-///
-/// An application may use multiple Z3 contexts. Objects created in one context
-/// cannot be used in another one. However, several objects may be "translated" from
-/// one context to another. It is not safe to access Z3 objects from multiple threads.
-///
-/// # Examples:
-///
-/// Creating a context with the default configuration:
-///
-/// ```
-/// use z3::{Config, Context};
-/// let cfg = Config::new();
-/// let ctx = Context::new(&cfg);
-/// ```
-///
-/// # See also:
-///
-/// - [`Config`]
-/// - [`Context::new()`]
-#[derive(PartialEq, Eq, Debug)]
-pub struct Context {
-    z3_ctx: Z3_context,
-}
-
-/// Handle that can be used to interrupt a computation from another thread.
-///
-/// # See also:
-///
-/// - [`Context::interrupt()`]
-/// - [`Context::handle()`]
-/// - [`ContextHandle::interrupt()`]
-#[derive(PartialEq, Eq, Debug)]
-pub struct ContextHandle<'ctx> {
-    ctx: &'ctx Context,
-}
+pub use context::{Context, ContextHandle};
 
 /// Symbols are used to name several term and type constructors.
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -91,13 +49,80 @@ pub enum Symbol {
     String(String),
 }
 
+macro_rules! make_Z3_object {
+    (
+        $(#[$struct_meta:meta])*
+        $($v:vis)? struct $name:ident < 'ctx >
+        where
+            sys_ty: $sys_ty:ident,
+            inc_ref: $inc_ref:ident,
+            dec_ref: $dec_ref:ident,
+        ;
+    ) => {
+        $(#[$struct_meta])*
+        $($v)? struct $name<'ctx> {
+            _ctx: &'ctx $crate::Context,
+            _ptr: ::std::ptr::NonNull<$sys_ty>,
+        }
+
+        impl<'ctx> $name<'ctx> {
+            /// Wraps a raw [`$sys_ty`]
+            ///
+            /// Nearly every function in z3-sys has the possibility of returning null and setting
+            /// an error code. Make sure to use one of the check_error_* methods before wrapping
+            /// the return value.
+            ///
+            /// The reference counter will be incremented, and decremented with Drop
+            ///
+            /// ### Safety
+            ///
+            /// `ptr` must be a valid pointer to a [`$sys_ty`]
+            unsafe pub fn wrap(ctx: &'ctx $crate::Context, ptr: ::std::ptr::NonNull<$sys_ty>) -> Self {
+                $inc_ref(*self.ctx, *self);
+                self.check_error().unwrap();
+                Self {
+                    _ctx: ctx,
+                    _ptr: ptr,
+                }
+            }
+        }
+
+        impl<'ctx> $crate::HasContext<'ctx> for $name<'ctx> {
+            fn ctx(&self) -> &'ctx $crate::Context {
+                self._ctx
+            }
+        }
+
+        impl<'ctx> ::std::ops::Deref for $name<'ctx> {
+            type Target = ::std::ptr::NonNull<$sys_ty>;
+
+            fn deref(&self) -> &Self::Target {
+                &self._ptr
+            }
+        }
+
+        impl<'ctx> ::std::clone::Clone for $name<'ctx> {
+            fn clone(&self) -> Self {
+                Self::wrap(self._ctx, *self)
+            }
+        }
+
+        impl<'ctx> ::std::ops::Drop for $name<'ctx> {
+            fn drop(&mut self) {
+                $dec_ref(*self.ctx, *self);
+                // panic!ing in drop is annoying, so don't do that, so don't call check_error since we're not going to do anything with the result
+            }
+        }
+    };
+}
+
 /// Sorts represent the various 'types' of [`Ast`s](ast::Ast).
 //
 // Note for in-crate users: Never construct a `Sort` directly; only use
 // `Sort::new()` which handles Z3 refcounting properly.
 pub struct Sort<'ctx> {
     ctx: &'ctx Context,
-    z3_sort: Z3_sort,
+    z3_sort: NonNull<Z3_sort>,
 }
 
 /// A struct to represent when two sorts are of different types.
@@ -119,7 +144,7 @@ pub struct IsNotApp {
 // `Solver::new()` which handles Z3 refcounting properly.
 pub struct Solver<'ctx> {
     ctx: &'ctx Context,
-    z3_slv: Z3_solver,
+    z3_slv: NonNull<Z3_solver>,
 }
 
 /// Model for the constraints inserted into the logical context.
@@ -128,7 +153,7 @@ pub struct Solver<'ctx> {
 // `Model::new()` which handles Z3 refcounting properly.
 pub struct Model<'ctx> {
     ctx: &'ctx Context,
-    z3_mdl: Z3_model,
+    z3_mdl: NonNull<Z3_model>,
 }
 
 /// Context for solving optimization queries.
@@ -137,7 +162,7 @@ pub struct Model<'ctx> {
 // `Optimize::new()` which handles Z3 refcounting properly.
 pub struct Optimize<'ctx> {
     ctx: &'ctx Context,
-    z3_opt: Z3_optimize,
+    z3_opt: NonNull<Z3_optimize>,
 }
 
 /// Function declaration. Every constant and function have an associated declaration.
@@ -154,21 +179,21 @@ pub struct Optimize<'ctx> {
 // `FuncDecl::new()` which handles Z3 refcounting properly.
 pub struct FuncDecl<'ctx> {
     ctx: &'ctx Context,
-    z3_func_decl: Z3_func_decl,
+    z3_func_decl: NonNull<Z3_func_decl>,
 }
 
 /// Stores the interpretation of a function in a Z3 model.
 /// <https://z3prover.github.io/api/html/classz3py_1_1_func_interp.html>
 pub struct FuncInterp<'ctx> {
     ctx: &'ctx Context,
-    z3_func_interp: Z3_func_interp,
+    z3_func_interp: NonNull<Z3_func_interp>,
 }
 
 /// Store the value of the interpretation of a function in a particular point.
 /// <https://z3prover.github.io/api/html/classz3py_1_1_func_entry.html>
 pub struct FuncEntry<'ctx> {
     ctx: &'ctx Context,
-    z3_func_entry: Z3_func_entry,
+    z3_func_entry: NonNull<Z3_func_entry>,
 }
 
 /// Recursive function declaration. Every function has an associated declaration.
@@ -186,7 +211,7 @@ pub struct FuncEntry<'ctx> {
 // `RecFuncDecl::new()` which handles Z3 refcounting properly.
 pub struct RecFuncDecl<'ctx> {
     ctx: &'ctx Context,
-    z3_func_decl: Z3_func_decl,
+    z3_func_decl: NonNull<Z3_func_decl>,
 }
 
 pub use z3_sys::DeclKind;
@@ -256,7 +281,7 @@ pub struct DatatypeSort<'ctx> {
 /// Parameter set used to configure many components (simplifiers, tactics, solvers, etc).
 pub struct Params<'ctx> {
     ctx: &'ctx Context,
-    z3_params: Z3_params,
+    z3_params: NonNull<Z3_params>,
 }
 
 /// Result of a satisfiability query.
@@ -270,17 +295,51 @@ pub enum SatResult {
     Sat,
 }
 
+pub trait HasContext<'ctx> {
+    fn ctx(&self) -> &'ctx Context;
+
+    fn check_error_ptr<T: ?Sized>(&self, ptr: *mut T) -> Result<NonNull<T>, Error> {
+        self.check_error().map(|_| NonNull::new(ptr).expect("Result code Ok but null ptr passed in"))
+    }
+
+    fn check_error_pass<T>(&self, thing: T) -> Result<T, Error> {
+        self.check_error().map(|_| thing)
+    }
+
+    fn check_error_bool(&self, result: bool) -> bool {
+        self.check_error().is_ok() && result
+    }
+
+    fn check_error(&self) -> Result<(), Error> {
+        let code = self.get_error_code();
+        if code == ErrorCode::OK {
+            return Ok(());
+        }
+        let msg = self.get_error_message(code);
+        Err(Error{code, msg})
+    }
+
+    fn get_error_code(&self) -> ErrorCode {
+        unsafe { Z3_get_error_code(*self.ctx()) }
+    }
+
+    fn get_error_message(&self, err_code: ErrorCode) -> String {
+        let msg_cstr = unsafe { CStr::from_ptr(Z3_get_error_msg(*self.ctx(), err_code)) };
+        msg_cstr.to_str().expect("Failed to decode error message from Z3 as UTF-8").to_string()
+    }
+}
+
 /// A pattern for quantifier instantiation, used to guide quantifier instantiation.
 pub struct Pattern<'ctx> {
     ctx: &'ctx Context,
-    z3_pattern: Z3_pattern,
+    z3_pattern: NonNull<Z3_pattern>,
 }
 
 /// Collection of subgoals resulting from applying of a tactic to a goal.
 #[derive(Clone, Debug)]
 pub struct ApplyResult<'ctx> {
     ctx: &'ctx Context,
-    z3_apply_result: Z3_apply_result,
+    z3_apply_result: NonNull<Z3_apply_result>,
 }
 
 /// Basic building block for creating custom solvers for specific problem domains.
@@ -303,14 +362,10 @@ pub struct ApplyResult<'ctx> {
 /// [`Tactic::solver()`].
 pub struct Tactic<'ctx> {
     ctx: &'ctx Context,
-    z3_tactic: Z3_tactic,
+    z3_tactic: NonNull<Z3_tactic>,
 }
 
-/// Set of formulas that can be solved and/or transformed using tactics and solvers.
-pub struct Goal<'ctx> {
-    ctx: &'ctx Context,
-    z3_goal: Z3_goal,
-}
+pub use goal::Goal;
 
 /// Function/predicate used to inspect a goal and collect information
 /// that may be used to decide which solver and/or preprocessing step
@@ -320,7 +375,7 @@ pub struct Goal<'ctx> {
 /// [`Probe::list_all()`].
 pub struct Probe<'ctx> {
     ctx: &'ctx Context,
-    z3_probe: Z3_probe,
+    z3_probe: NonNull<Z3_probe>,
 }
 
 /// Statistical data about a solver.
@@ -331,5 +386,5 @@ pub struct Probe<'ctx> {
 /// - [`Solver::get_statistics()`]
 pub struct Statistics<'ctx> {
     ctx: &'ctx Context,
-    z3_stats: Z3_stats,
+    z3_stats: NonNull<Z3_stats>,
 }

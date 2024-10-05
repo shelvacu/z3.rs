@@ -31,281 +31,162 @@
 #![allow(clippy::unreadable_literal)]
 #![warn(clippy::doc_markdown)]
 
+use core::ptr::NonNull;
+
 mod generated;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_symbol {
-    _unused: [u8; 0],
+macro_rules! opaque_types {
+    ($(
+        $(#[$struct_meta:meta])* pub struct $struct_name:ident;
+    )*) => {
+        $(
+            #[repr(C)]
+            $(#[$struct_meta])*
+            // We *don't* derive Debug, Copy, etc. because it's an opaque type, we don't know if that's
+            // okay.
+            pub struct $struct_name {
+                // As recommended in the rustnomicon: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
+                _data: [u8; 0],
+                _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+            }
+        )*
+    };
 }
-/// Lisp-like symbol used to name types, constants, and functions.
-/// A symbol can be created using string or integers.
-///
-/// # See also:
-///
-/// - [`Z3_get_symbol_int`]
-/// - [`Z3_get_symbol_kind`]
-/// - [`Z3_get_symbol_string`]
-/// - [`Z3_mk_int_symbol`]
-/// - [`Z3_mk_string_symbol`]
-pub type Z3_symbol = *mut _Z3_symbol;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_literals {
-    _unused: [u8; 0],
-}
-pub type Z3_literals = *mut _Z3_literals;
+opaque_types! {
+    /// Lisp-like symbol used to name types, constants, and functions.
+    /// A symbol can be created using string or integers.
+    ///
+    /// # See also:
+    ///
+    /// - [`Z3_get_symbol_int`]
+    /// - [`Z3_get_symbol_kind`]
+    /// - [`Z3_get_symbol_string`]
+    /// - [`Z3_mk_int_symbol`]
+    /// - [`Z3_mk_string_symbol`]
+    pub struct Z3_symbol;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_config {
-    _unused: [u8; 0],
-}
-/// Configuration object used to initialize logical contexts.
-pub type Z3_config = *mut _Z3_config;
+    pub struct Z3_literals;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_context {
-    _unused: [u8; 0],
-}
-/// Manager of all other Z3 objects, global configuration options, etc.
-pub type Z3_context = *mut _Z3_context;
+    /// Configuration object used to initialize logical contexts.
+    pub struct Z3_config;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_sort {
-    _unused: [u8; 0],
-}
-/// Kind of AST used to represent types.
-pub type Z3_sort = *mut _Z3_sort;
+    /// Manager of all other Z3 objects, global configuration options, etc.
+    pub struct Z3_context;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_func_decl {
-    _unused: [u8; 0],
-}
-/// Kind of AST used to represent function symbols.
-pub type Z3_func_decl = *mut _Z3_func_decl;
+    /// Kind of AST used to represent types.
+    pub struct Z3_sort;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_ast {
-    _unused: [u8; 0],
-}
-/// Abstract Syntax Tree node. That is, the data structure used in Z3
-/// to represent terms, formulas, and types.
-pub type Z3_ast = *mut _Z3_ast;
+    /// Kind of AST used to represent function symbols.
+    pub struct Z3_func_decl;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_app {
-    _unused: [u8; 0],
-}
-/// Kind of AST used to represent function applications.
-pub type Z3_app = *mut _Z3_app;
+    /// Abstract Syntax Tree node. That is, the data structure used in Z3
+    /// to represent terms, formulas, and types.
+    pub struct Z3_ast;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_pattern {
-    _unused: [u8; 0],
-}
-/// Kind of AST used to represent pattern and multi-patterns used
-/// to guide quantifier instantiation.
-pub type Z3_pattern = *mut _Z3_pattern;
+    /// Kind of AST used to represent function applications.
+    pub struct Z3_app;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_model {
-    _unused: [u8; 0],
-}
-/// Model for the constraints inserted into the logical context.
-pub type Z3_model = *mut _Z3_model;
+    /// Kind of AST used to represent pattern and multi-patterns used
+    /// to guide quantifier instantiation.
+    pub struct Z3_pattern;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_constructor {
-    _unused: [u8; 0],
-}
-/// Type constructor for a (recursive) datatype.
-pub type Z3_constructor = *mut _Z3_constructor;
+    /// Model for the constraints inserted into the logical context.
+    pub struct Z3_model;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_constructor_list {
-    _unused: [u8; 0],
-}
-/// List of constructors for a (recursive) datatype.
-pub type Z3_constructor_list = *mut _Z3_constructor_list;
+    /// Type constructor for a (recursive) datatype.
+    pub struct Z3_constructor;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_params {
-    _unused: [u8; 0],
-}
-/// Parameter set used to configure many components such as:
-/// simplifiers, tactics, solvers, etc.
-pub type Z3_params = *mut _Z3_params;
+    /// List of constructors for a (recursive) datatype.
+    pub struct Z3_constructor_list;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_param_descrs {
-    _unused: [u8; 0],
-}
-/// Provides a collection of parameter names, their types,
-/// default values and documentation strings. Solvers, tactics,
-/// and other objects accept different collection of parameters.
-pub type Z3_param_descrs = *mut _Z3_param_descrs;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_goal {
-    _unused: [u8; 0],
-}
-/// Set of formulas that can be solved and/or transformed using
-/// tactics and solvers.
-pub type Z3_goal = *mut _Z3_goal;
+    /// Parameter set used to configure many components such as:
+    /// simplifiers, tactics, solvers, etc.
+    pub struct Z3_params;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_tactic {
-    _unused: [u8; 0],
-}
-/// Basic building block for creating custom solvers for specific
-/// problem domains.
-pub type Z3_tactic = *mut _Z3_tactic;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_probe {
-    _unused: [u8; 0],
-}
-/// Function/predicate used to inspect a goal and collect information
-/// that may be used to decide which solver and/or preprocessing step
-/// will be used.
-pub type Z3_probe = *mut _Z3_probe;
+    /// Provides a collection of parameter names, their types,
+    /// default values and documentation strings. Solvers, tactics,
+    /// and other objects accept different collection of parameters.
+    pub struct Z3_param_descrs;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_stats {
-    _unused: [u8; 0],
-}
-/// Statistical data for a solver.
-pub type Z3_stats = *mut _Z3_stats;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_solver {
-    _unused: [u8; 0],
-}
-/// (Incremental) solver, possibly specialized by a particular
-/// tactic or logic.
-pub type Z3_solver = *mut _Z3_solver;
+    /// Set of formulas that can be solved and/or transformed using
+    /// tactics and solvers.
+    pub struct Z3_goal;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_ast_vector {
-    _unused: [u8; 0],
-}
-/// Vector of [`Z3_ast`] objects.
-pub type Z3_ast_vector = *mut _Z3_ast_vector;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_ast_map {
-    _unused: [u8; 0],
-}
-/// Mapping from [`Z3_ast`] to [`Z3_ast`] objects.
-pub type Z3_ast_map = *mut _Z3_ast_map;
+    /// Basic building block for creating custom solvers for specific
+    /// problem domains.
+    pub struct Z3_tactic;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_apply_result {
-    _unused: [u8; 0],
-}
-/// Collection of subgoals resulting from applying of a tactic
-/// to a goal.
-pub type Z3_apply_result = *mut _Z3_apply_result;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_func_interp {
-    _unused: [u8; 0],
-}
-/// Interpretation of a function in a model.
-pub type Z3_func_interp = *mut _Z3_func_interp;
+    /// Function/predicate used to inspect a goal and collect information
+    /// that may be used to decide which solver and/or preprocessing step
+    /// will be used.
+    pub struct Z3_probe;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_func_entry {
-    _unused: [u8; 0],
-}
-/// Representation of the value of a [`Z3_func_interp`]
-/// at a particular point.
-pub type Z3_func_entry = *mut _Z3_func_entry;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_fixedpoint {
-    _unused: [u8; 0],
-}
-/// Context for the recursive predicate solver.
-pub type Z3_fixedpoint = *mut _Z3_fixedpoint;
+    /// Statistical data for a solver.
+    pub struct Z3_stats;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_optimize {
-    _unused: [u8; 0],
-}
-/// Context for solving optimization queries.
-pub type Z3_optimize = *mut _Z3_optimize;
 
-#[doc(hidden)]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct _Z3_rcf_num {
-    _unused: [u8; 0],
+    /// (Incremental) solver, possibly specialized by a particular
+    /// tactic or logic.
+    pub struct Z3_solver;
+
+
+    /// Vector of [`Z3_ast`] objects.
+    pub struct Z3_ast_vector;
+
+
+    /// Mapping from [`Z3_ast`] to [`Z3_ast`] objects.
+    pub struct Z3_ast_map;
+
+
+    /// Collection of subgoals resulting from applying of a tactic
+    /// to a goal.
+    pub struct Z3_apply_result;
+
+
+    /// Interpretation of a function in a model.
+    pub struct Z3_func_interp;
+
+
+    /// Representation of the value of a [`Z3_func_interp`]
+    /// at a particular point.
+    pub struct Z3_func_entry;
+
+
+    /// Context for the recursive predicate solver.
+    pub struct Z3_fixedpoint;
+
+
+    /// Context for solving optimization queries.
+    pub struct Z3_optimize;
+
+
+    pub struct Z3_rcf_num;
 }
-pub type Z3_rcf_num = *mut _Z3_rcf_num;
 
 /// Z3 string type. It is just an alias for `const char *`.
 pub type Z3_string = *const ::std::os::raw::c_char;
 
-pub type Z3_string_ptr = *mut Z3_string;
-
-pub const Z3_L_FALSE: Z3_lbool = -1;
-pub const Z3_L_UNDEF: Z3_lbool = 0;
-pub const Z3_L_TRUE: Z3_lbool = 1;
+pub type Z3_string_ptr = Z3_string;
 
 /// Lifted Boolean type: `false`, `undefined`, `true`.
-pub type Z3_lbool = i32;
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Z3_lbool {
+    False = -1,
+    Undefined = 0,
+    True = 1,
+}
+
+pub use Z3_lbool::False as Z3_L_FALSE;
+pub use Z3_lbool::Undefined as Z3_L_UNDEF;
+pub use Z3_lbool::True as Z3_L_TRUE;
 
 /// The different kinds of symbol.
 /// In Z3, a symbol can be represented using integers and
@@ -1603,7 +1484,7 @@ extern "C" {
     ///
     /// - [`Z3_global_param_get`]
     /// - [`Z3_global_param_reset_all`]
-    pub fn Z3_global_param_set(param_id: Z3_string, param_value: Z3_string);
+    pub fn Z3_global_param_set(param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string>);
 
     /// Restore the value of all global (and module) parameters.
     /// This command will not affect already created objects (such as tactics and solvers).
@@ -1625,7 +1506,7 @@ extern "C" {
     ///
     /// NOTE: This function cannot be invoked simultaneously from different threads without synchronization.
     /// The result string stored in `param_value` is stored in shared location.
-    pub fn Z3_global_param_get(param_id: Z3_string, param_value: Z3_string_ptr) -> bool;
+    pub fn Z3_global_param_get(param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string_ptr>) -> bool;
 
     /// Create a configuration object for the Z3 context object.
     ///
@@ -1655,14 +1536,14 @@ extern "C" {
     ///
     /// - [`Z3_set_param_value`]
     /// - [`Z3_del_config`]
-    pub fn Z3_mk_config() -> Z3_config;
+    pub fn Z3_mk_config() -> *mut Z3_config;
 
     /// Delete the given configuration object.
     ///
     /// # See also:
     ///
     /// - [`Z3_mk_config`]
-    pub fn Z3_del_config(c: Z3_config);
+    pub fn Z3_del_config(c: NonNull<Z3_config>);
 
     /// Set a configuration parameter.
     ///
@@ -1671,7 +1552,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_config`]
-    pub fn Z3_set_param_value(c: Z3_config, param_id: Z3_string, param_value: Z3_string);
+    pub fn Z3_set_param_value(c: NonNull<Z3_config>, param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string>);
 
     /// Create a context using the given configuration.
     ///
@@ -1698,7 +1579,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_del_context`]
-    pub fn Z3_mk_context(c: Z3_config) -> Z3_context;
+    pub fn Z3_mk_context(c: NonNull<Z3_config>) -> *mut Z3_context;
 
     /// Create a context using the given configuration.
     /// This function is similar to [`Z3_mk_context`]. However,
@@ -1718,31 +1599,31 @@ extern "C" {
     /// - All main interaction with Z3 happens in the context of a [`Z3_context`].
     /// - Z3 uses hash-consing, i.e., when the same [`Z3_ast`] is created twice,
     ///   Z3 will return the same pointer twice.
-    pub fn Z3_mk_context_rc(c: Z3_config) -> Z3_context;
+    pub fn Z3_mk_context_rc(c: NonNull<Z3_config>) -> *mut Z3_context;
 
     /// Delete the given logical context.
     ///
     /// # See also:
     ///
     /// - [`Z3_mk_context`]
-    pub fn Z3_del_context(c: Z3_context);
+    pub fn Z3_del_context(c: NonNull<Z3_context>);
 
     /// Increment the reference counter of the given AST.
     /// The context `c` should have been created using [`Z3_mk_context_rc`].
     /// This function is a NOOP if `c` was created using [`Z3_mk_context`].
-    pub fn Z3_inc_ref(c: Z3_context, a: Z3_ast);
+    pub fn Z3_inc_ref(c: NonNull<Z3_context>, a: NonNull<Z3_ast>);
 
     /// Decrement the reference counter of the given AST.
     /// The context `c` should have been created using [`Z3_mk_context_rc`].
     /// This function is a NOOP if `c` was created using [`Z3_mk_context`].
-    pub fn Z3_dec_ref(c: Z3_context, a: Z3_ast);
+    pub fn Z3_dec_ref(c: NonNull<Z3_context>, a: NonNull<Z3_ast>);
 
     /// Set a value of a context parameter.
     ///
     /// # See also:
     ///
     /// - [`Z3_global_param_set`]
-    pub fn Z3_update_param_value(c: Z3_context, param_id: Z3_string, param_value: Z3_string);
+    pub fn Z3_update_param_value(c: NonNull<Z3_context>, param_id: NonNull<Z3_string>, param_value: NonNull<Z3_string>);
 
     /// Interrupt the execution of a Z3 procedure.
     ///
@@ -1750,7 +1631,7 @@ extern "C" {
     ///
     /// This method can be invoked from a thread different from the one executing the
     /// interruptible procedure.
-    pub fn Z3_interrupt(c: Z3_context);
+    pub fn Z3_interrupt(c: NonNull<Z3_context>);
 
     /// Create a Z3 (empty) parameter set.
     /// Starting at Z3 4.0, parameter sets are used to configure many components such as:
@@ -1759,46 +1640,46 @@ extern "C" {
     /// NOTE: Reference counting must be used to manage parameter
     /// sets, even when the [`Z3_context`] was created using
     /// [`Z3_mk_context`] instead of [`Z3_mk_context_rc`].
-    pub fn Z3_mk_params(c: Z3_context) -> Z3_params;
+    pub fn Z3_mk_params(c: NonNull<Z3_context>) -> *mut Z3_params;
 
     /// Increment the reference counter of the given parameter set.
-    pub fn Z3_params_inc_ref(c: Z3_context, p: Z3_params);
+    pub fn Z3_params_inc_ref(c: NonNull<Z3_context>, p: NonNull<Z3_params>);
 
     /// Decrement the reference counter of the given parameter set.
-    pub fn Z3_params_dec_ref(c: Z3_context, p: Z3_params);
+    pub fn Z3_params_dec_ref(c: NonNull<Z3_context>, p: NonNull<Z3_params>);
 
     /// Add a Boolean parameter `k` with value `v` to the parameter set `p`.
-    pub fn Z3_params_set_bool(c: Z3_context, p: Z3_params, k: Z3_symbol, v: bool);
+    pub fn Z3_params_set_bool(c: NonNull<Z3_context>, p: NonNull<Z3_params>, k: NonNull<Z3_symbol>, v: bool);
 
     /// Add a unsigned parameter `k` with value `v` to the parameter set `p`.
-    pub fn Z3_params_set_uint(c: Z3_context, p: Z3_params, k: Z3_symbol, v: ::std::os::raw::c_uint);
+    pub fn Z3_params_set_uint(c: NonNull<Z3_context>, p: NonNull<Z3_params>, k: NonNull<Z3_symbol>, v: ::std::os::raw::c_uint);
 
     /// Add a double parameter `k` with value `v` to the parameter set `p`.
-    pub fn Z3_params_set_double(c: Z3_context, p: Z3_params, k: Z3_symbol, v: f64);
+    pub fn Z3_params_set_double(c: NonNull<Z3_context>, p: NonNull<Z3_params>, k: NonNull<Z3_symbol>, v: f64);
 
     /// Add a symbol parameter `k` with value `v` to the parameter set `p`.
-    pub fn Z3_params_set_symbol(c: Z3_context, p: Z3_params, k: Z3_symbol, v: Z3_symbol);
+    pub fn Z3_params_set_symbol(c: NonNull<Z3_context>, p: NonNull<Z3_params>, k: NonNull<Z3_symbol>, v: NonNull<Z3_symbol>);
 
     /// Convert a parameter set into a string. This function is mainly used for printing the
     /// contents of a parameter set.
-    pub fn Z3_params_to_string(c: Z3_context, p: Z3_params) -> Z3_string;
+    pub fn Z3_params_to_string(c: NonNull<Z3_context>, p: NonNull<Z3_params>) -> Z3_string;
 
     /// Validate the parameter set `p` against the parameter description set `d`.
     ///
     /// The procedure invokes the error handler if `p` is invalid.
-    pub fn Z3_params_validate(c: Z3_context, p: Z3_params, d: Z3_param_descrs);
+    pub fn Z3_params_validate(c: NonNull<Z3_context>, p: NonNull<Z3_params>, d: NonNull<Z3_param_descrs>);
 
     /// Increment the reference counter of the given parameter description set.
-    pub fn Z3_param_descrs_inc_ref(c: Z3_context, p: Z3_param_descrs);
+    pub fn Z3_param_descrs_inc_ref(c: NonNull<Z3_context>, p: NonNull<Z3_param_descrs>);
 
     /// Decrement the reference counter of the given parameter description set.
-    pub fn Z3_param_descrs_dec_ref(c: Z3_context, p: Z3_param_descrs);
+    pub fn Z3_param_descrs_dec_ref(c: NonNull<Z3_context>, p: NonNull<Z3_param_descrs>);
 
     /// Return the kind associated with the given parameter name `n`.
-    pub fn Z3_param_descrs_get_kind(c: Z3_context, p: Z3_param_descrs, n: Z3_symbol) -> ParamKind;
+    pub fn Z3_param_descrs_get_kind(c: NonNull<Z3_context>, p: NonNull<Z3_param_descrs>, n: NonNull<Z3_symbol>) -> ParamKind;
 
     /// Return the number of parameters in the given parameter description set.
-    pub fn Z3_param_descrs_size(c: Z3_context, p: Z3_param_descrs) -> ::std::os::raw::c_uint;
+    pub fn Z3_param_descrs_size(c: NonNull<Z3_context>, p: NonNull<Z3_param_descrs>) -> ::std::os::raw::c_uint;
 
     /// Return the number of parameters in the given parameter description set.
     ///
@@ -1806,21 +1687,21 @@ extern "C" {
     ///
     /// - `i < Z3_param_descrs_size(c, p)`
     pub fn Z3_param_descrs_get_name(
-        c: Z3_context,
-        p: Z3_param_descrs,
+        c: NonNull<Z3_context>,
+        p: NonNull<Z3_param_descrs>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_symbol;
+    ) -> *mut Z3_symbol;
 
     /// Retrieve documentation string corresponding to parameter name `s`.
     pub fn Z3_param_descrs_get_documentation(
-        c: Z3_context,
-        p: Z3_param_descrs,
-        s: Z3_symbol,
+        c: NonNull<Z3_context>,
+        p: NonNull<Z3_param_descrs>,
+        s: NonNull<Z3_symbol>,
     ) -> Z3_string;
 
     /// Convert a parameter description set into a string. This function is mainly used for printing the
     /// contents of a parameter description set.
-    pub fn Z3_param_descrs_to_string(c: Z3_context, p: Z3_param_descrs) -> Z3_string;
+    pub fn Z3_param_descrs_to_string(c: NonNull<Z3_context>, p: NonNull<Z3_param_descrs>) -> Z3_string;
 
     /// Create a Z3 symbol using an integer.
     ///
@@ -1833,7 +1714,7 @@ extern "C" {
     ///
     /// - [`Z3_get_symbol_int`]
     /// - [`Z3_mk_string_symbol`]
-    pub fn Z3_mk_int_symbol(c: Z3_context, i: ::std::os::raw::c_int) -> Z3_symbol;
+    pub fn Z3_mk_int_symbol(c: NonNull<Z3_context>, i: ::std::os::raw::c_int) -> *mut Z3_symbol;
 
     /// Create a Z3 symbol using a C string.
     ///
@@ -1843,17 +1724,17 @@ extern "C" {
     ///
     /// - [`Z3_get_symbol_string`]
     /// - [`Z3_mk_int_symbol`]
-    pub fn Z3_mk_string_symbol(c: Z3_context, s: Z3_string) -> Z3_symbol;
+    pub fn Z3_mk_string_symbol(c: NonNull<Z3_context>, s: NonNull<Z3_string>) -> *mut Z3_symbol;
 
     /// Create a free (uninterpreted) type using the given name (symbol).
     ///
     /// Two free types are considered the same iff the have the same name.
-    pub fn Z3_mk_uninterpreted_sort(c: Z3_context, s: Z3_symbol) -> Z3_sort;
+    pub fn Z3_mk_uninterpreted_sort(c: NonNull<Z3_context>, s: NonNull<Z3_symbol>) -> *mut Z3_sort;
 
     /// Create the Boolean type.
     ///
     /// This type is used to create propositional variables and predicates.
-    pub fn Z3_mk_bool_sort(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_bool_sort(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the integer type.
     ///
@@ -1864,19 +1745,19 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_bv_sort`]
-    pub fn Z3_mk_int_sort(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_int_sort(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the real type.
     ///
     /// Note that this type is not a floating point number.
-    pub fn Z3_mk_real_sort(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_real_sort(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create a bit-vector type of the given size.
     ///
     /// This type can also be seen as a machine integer.
     ///
     /// NOTE: The size of the bit-vector type must be greater than zero.
-    pub fn Z3_mk_bv_sort(c: Z3_context, sz: ::std::os::raw::c_uint) -> Z3_sort;
+    pub fn Z3_mk_bv_sort(c: NonNull<Z3_context>, sz: ::std::os::raw::c_uint) -> *mut Z3_sort;
 
     /// Create a named finite domain sort.
     ///
@@ -1889,7 +1770,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_finite_domain_sort_size`]
-    pub fn Z3_mk_finite_domain_sort(c: Z3_context, name: Z3_symbol, size: u64) -> Z3_sort;
+    pub fn Z3_mk_finite_domain_sort(c: NonNull<Z3_context>, name: NonNull<Z3_symbol>, size: u64) -> *mut Z3_sort;
 
     /// Create an array type.
     ///
@@ -1900,7 +1781,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_select`]
     /// - [`Z3_mk_store`]
-    pub fn Z3_mk_array_sort(c: Z3_context, domain: Z3_sort, range: Z3_sort) -> Z3_sort;
+    pub fn Z3_mk_array_sort(c: NonNull<Z3_context>, domain: NonNull<Z3_sort>, range: NonNull<Z3_sort>) -> *mut Z3_sort;
 
     /// Create an array type with N arguments
     ///
@@ -1909,11 +1790,11 @@ extern "C" {
     /// - [`Z3_mk_select_n`]
     /// - [`Z3_mk_store_n`]
     pub fn Z3_mk_array_sort_n(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         n: ::std::os::raw::c_uint,
         domain: *const Z3_sort,
-        range: Z3_sort,
-    ) -> Z3_sort;
+        range: NonNull<Z3_sort>,
+    ) -> *mut Z3_sort;
 
     /// Create a tuple type.
     ///
@@ -1928,14 +1809,14 @@ extern "C" {
     /// - `mk_tuple_decl`: output parameter that will contain the constructor declaration.
     /// - `proj_decl`: output parameter that will contain the projection function declarations. This field must be a buffer of size `num_fields` allocated by the user.
     pub fn Z3_mk_tuple_sort(
-        c: Z3_context,
-        mk_tuple_name: Z3_symbol,
+        c: NonNull<Z3_context>,
+        mk_tuple_name: NonNull<Z3_symbol>,
         num_fields: ::std::os::raw::c_uint,
         field_names: *const Z3_symbol,
         field_sorts: *const Z3_sort,
         mk_tuple_decl: *mut Z3_func_decl,
         proj_decl: *mut Z3_func_decl,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Create a enumeration sort.
     ///
@@ -1955,13 +1836,13 @@ extern "C" {
     /// The first predicate (corresponding to A) is true when applied to A, and false otherwise.
     /// Similarly for the other predicates.
     pub fn Z3_mk_enumeration_sort(
-        c: Z3_context,
-        name: Z3_symbol,
+        c: NonNull<Z3_context>,
+        name: NonNull<Z3_symbol>,
         n: ::std::os::raw::c_uint,
         enum_names: *const Z3_symbol,
         enum_consts: *mut Z3_func_decl,
         enum_testers: *mut Z3_func_decl,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Create a list sort
     ///
@@ -1978,16 +1859,16 @@ extern "C" {
     /// - `head_decl`: list head.
     /// - `tail_decl`: list tail.
     pub fn Z3_mk_list_sort(
-        c: Z3_context,
-        name: Z3_symbol,
-        elem_sort: Z3_sort,
+        c: NonNull<Z3_context>,
+        name: NonNull<Z3_symbol>,
+        elem_sort: NonNull<Z3_sort>,
         nil_decl: *mut Z3_func_decl,
         is_nil_decl: *mut Z3_func_decl,
         cons_decl: *mut Z3_func_decl,
         is_cons_decl: *mut Z3_func_decl,
         head_decl: *mut Z3_func_decl,
         tail_decl: *mut Z3_func_decl,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Create a constructor.
     ///
@@ -2007,14 +1888,14 @@ extern "C" {
     /// - [`Z3_mk_constructor_list`]
     /// - [`Z3_query_constructor`]
     pub fn Z3_mk_constructor(
-        c: Z3_context,
-        name: Z3_symbol,
-        recognizer: Z3_symbol,
+        c: NonNull<Z3_context>,
+        name: NonNull<Z3_symbol>,
+        recognizer: NonNull<Z3_symbol>,
         num_fields: ::std::os::raw::c_uint,
         field_names: *const Z3_symbol,
         sorts: *const Z3_sort,
         sort_refs: *mut ::std::os::raw::c_uint,
-    ) -> Z3_constructor;
+    ) -> *mut Z3_constructor;
 
     /// Reclaim memory allocated to constructor.
     ///
@@ -2024,7 +1905,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_constructor`]
-    pub fn Z3_del_constructor(c: Z3_context, constr: Z3_constructor);
+    pub fn Z3_del_constructor(c: NonNull<Z3_context>, constr: NonNull<Z3_constructor>);
 
     /// Create datatype, such as lists, trees, records, enumerations or unions of records.
     /// The datatype may be recursive. Return the datatype sort.
@@ -2040,11 +1921,11 @@ extern "C" {
     /// - [`Z3_mk_constructor_list`]
     /// - [`Z3_mk_datatypes`]
     pub fn Z3_mk_datatype(
-        c: Z3_context,
-        name: Z3_symbol,
+        c: NonNull<Z3_context>,
+        name: NonNull<Z3_symbol>,
         num_constructors: ::std::os::raw::c_uint,
         constructors: *mut Z3_constructor,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Create list of constructors.
     ///
@@ -2057,10 +1938,10 @@ extern "C" {
     /// - [`Z3_del_constructor_list`]
     /// - [`Z3_mk_constructor`]
     pub fn Z3_mk_constructor_list(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_constructors: ::std::os::raw::c_uint,
         constructors: *const Z3_constructor,
-    ) -> Z3_constructor_list;
+    ) -> *mut Z3_constructor_list;
 
     /// Reclaim memory allocated for constructor list.
     ///
@@ -2072,7 +1953,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_constructor_list`]
-    pub fn Z3_del_constructor_list(c: Z3_context, clist: Z3_constructor_list);
+    pub fn Z3_del_constructor_list(c: NonNull<Z3_context>, clist: NonNull<Z3_constructor_list>);
 
     /// Create mutually recursive datatypes.
     ///
@@ -2088,7 +1969,7 @@ extern "C" {
     /// - [`Z3_mk_constructor_list`]
     /// - [`Z3_mk_datatype`]
     pub fn Z3_mk_datatypes(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_sorts: ::std::os::raw::c_uint,
         sort_names: *const Z3_symbol,
         sorts: *mut Z3_sort,
@@ -2108,8 +1989,8 @@ extern "C" {
     ///
     /// - [`Z3_mk_constructor`]
     pub fn Z3_query_constructor(
-        c: Z3_context,
-        constr: Z3_constructor,
+        c: NonNull<Z3_context>,
+        constr: NonNull<Z3_constructor>,
         num_fields: ::std::os::raw::c_uint,
         constructor: *mut Z3_func_decl,
         tester: *mut Z3_func_decl,
@@ -2134,12 +2015,12 @@ extern "C" {
     /// - [`Z3_mk_fresh_func_decl`]
     /// - [`Z3_mk_rec_func_decl`]
     pub fn Z3_mk_func_decl(
-        c: Z3_context,
-        s: Z3_symbol,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_symbol>,
         domain_size: ::std::os::raw::c_uint,
         domain: *const Z3_sort,
-        range: Z3_sort,
-    ) -> Z3_func_decl;
+        range: NonNull<Z3_sort>,
+    ) -> *mut Z3_func_decl;
 
     /// Create a constant or function application.
     ///
@@ -2149,11 +2030,11 @@ extern "C" {
     /// - [`Z3_mk_func_decl`]
     /// - [`Z3_mk_rec_func_decl`]
     pub fn Z3_mk_app(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Declare and create a constant.
     ///
@@ -2169,7 +2050,7 @@ extern "C" {
     /// - [`Z3_mk_app`]
     /// - [`Z3_mk_fresh_const`]
     /// - [`Z3_mk_func_decl`]
-    pub fn Z3_mk_const(c: Z3_context, s: Z3_symbol, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_const(c: NonNull<Z3_context>, s: NonNull<Z3_symbol>, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Declare a fresh constant or function.
     ///
@@ -2182,12 +2063,12 @@ extern "C" {
     ///
     /// - [`Z3_mk_func_decl`]
     pub fn Z3_mk_fresh_func_decl(
-        c: Z3_context,
-        prefix: Z3_string,
+        c: NonNull<Z3_context>,
+        prefix: NonNull<Z3_string>,
         domain_size: ::std::os::raw::c_uint,
         domain: *const Z3_sort,
-        range: Z3_sort,
-    ) -> Z3_func_decl;
+        range: NonNull<Z3_sort>,
+    ) -> *mut Z3_func_decl;
 
     /// Declare and create a fresh constant.
     ///
@@ -2205,7 +2086,7 @@ extern "C" {
     /// - [`Z3_mk_const`]
     /// - [`Z3_mk_fresh_func_decl`]
     /// - [`Z3_mk_func_decl`]
-    pub fn Z3_mk_fresh_const(c: Z3_context, prefix: Z3_string, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fresh_const(c: NonNull<Z3_context>, prefix: NonNull<Z3_string>, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Declare a recursive function
     ///
@@ -2226,12 +2107,12 @@ extern "C" {
     /// * [`Z3_mk_app`]
     /// * [`Z3_mk_func_decl`]
     pub fn Z3_mk_rec_func_decl(
-        c: Z3_context,
-        s: Z3_symbol,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_symbol>,
         domain_size: ::std::os::raw::c_uint,
         domain: *const Z3_sort,
-        range: Z3_sort,
-    ) -> Z3_func_decl;
+        range: NonNull<Z3_sort>,
+    ) -> *mut Z3_func_decl;
 
     /// Define the body of a recursive function.
     ///
@@ -2248,23 +2129,23 @@ extern "C" {
     ///
     /// * [`Z3_mk_rec_func_decl`]
     pub fn Z3_add_rec_def(
-        c: Z3_context,
-        f: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        f: NonNull<Z3_func_decl>,
         n: ::std::os::raw::c_uint,
         args: *mut Z3_ast,
-        body: Z3_ast,
+        body: NonNull<Z3_ast>,
     );
 
     /// Create an AST node representing `true`.
-    pub fn Z3_mk_true(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_true(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create an AST node representing `false`.
-    pub fn Z3_mk_false(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_false(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create an AST node representing `l = r`.
     ///
     /// The nodes `l` and `r` must have the same type.
-    pub fn Z3_mk_eq(c: Z3_context, l: Z3_ast, r: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_eq(c: NonNull<Z3_context>, l: NonNull<Z3_ast>, r: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `distinct(args[0], ..., args[num_args-1])`.
     ///
@@ -2275,36 +2156,36 @@ extern "C" {
     ///
     /// NOTE: The number of arguments of a distinct construct must be greater than one.
     pub fn Z3_mk_distinct(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create an AST node representing `not(a)`.
     ///
     /// The node `a` must have Boolean sort.
-    pub fn Z3_mk_not(c: Z3_context, a: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_not(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing an if-then-else: `ite(t1, t2, t3)`.
     ///
     /// The node `t1` must have Boolean sort, `t2` and `t3` must have the same sort.
     /// The sort of the new node is equal to the sort of `t2` and `t3`.
-    pub fn Z3_mk_ite(c: Z3_context, t1: Z3_ast, t2: Z3_ast, t3: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_ite(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>, t3: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `t1 iff t2`.
     ///
     /// The nodes `t1` and `t2` must have Boolean sort.
-    pub fn Z3_mk_iff(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_iff(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `t1 implies t2`.
     ///
     /// The nodes `t1` and `t2` must have Boolean sort.
-    pub fn Z3_mk_implies(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_implies(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `t1 xor t2`.
     ///
     /// The nodes `t1` and `t2` must have Boolean sort.
-    pub fn Z3_mk_xor(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_xor(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `args[0] and ... and args[num_args-1]`.
     ///
@@ -2313,10 +2194,10 @@ extern "C" {
     ///
     /// NOTE: The number of arguments must be greater than zero.
     pub fn Z3_mk_and(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create an AST node representing `args[0] or ... or args[num_args-1]`.
     ///
@@ -2324,8 +2205,8 @@ extern "C" {
     /// All arguments must have Boolean sort.
     ///
     /// NOTE: The number of arguments must be greater than zero.
-    pub fn Z3_mk_or(c: Z3_context, num_args: ::std::os::raw::c_uint, args: *const Z3_ast)
-        -> Z3_ast;
+    pub fn Z3_mk_or(c: NonNull<Z3_context>, num_args: ::std::os::raw::c_uint, args: *const Z3_ast)
+        -> *mut Z3_ast;
 
     /// Create an AST node representing `args[0] + ... + args[num_args-1]`.
     ///
@@ -2334,10 +2215,10 @@ extern "C" {
     ///
     /// NOTE: The number of arguments must be greater than zero.
     pub fn Z3_mk_add(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create an AST node representing `args[0] * ... * args[num_args-1]`.
     ///
@@ -2347,10 +2228,10 @@ extern "C" {
     /// NOTE: Z3 has limited support for non-linear arithmetic.
     /// NOTE: The number of arguments must be greater than zero.
     pub fn Z3_mk_mul(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create an AST node representing `args[0] - ... - args[num_args - 1]`.
     ///
@@ -2359,57 +2240,57 @@ extern "C" {
     ///
     /// NOTE: The number of arguments must be greater than zero.
     pub fn Z3_mk_sub(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create an AST node representing `- arg`.
     ///
     /// The arguments must have int or real type.
-    pub fn Z3_mk_unary_minus(c: Z3_context, arg: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_unary_minus(c: NonNull<Z3_context>, arg: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `arg1 div arg2`.
     ///
     /// The arguments must either both have int type or both have real type.
     /// If the arguments have int type, then the result type is an int type, otherwise the
     /// the result type is real.
-    pub fn Z3_mk_div(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_div(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `arg1 mod arg2`.
     ///
     /// The arguments must have int type.
-    pub fn Z3_mk_mod(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_mod(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `arg1 rem arg2`.
     ///
     /// The arguments must have int type.
-    pub fn Z3_mk_rem(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_rem(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an AST node representing `arg1 ^ arg2`.
     ///
     /// The arguments must have int or real type.
-    pub fn Z3_mk_power(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_power(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create less than.
     ///
     /// The nodes `t1` and `t2` must have the same sort, and must be int or real.
-    pub fn Z3_mk_lt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_lt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create less than or equal to.
     ///
     /// The nodes `t1` and `t2` must have the same sort, and must be int or real.
-    pub fn Z3_mk_le(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_le(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create greater than.
     ///
     /// The nodes `t1` and `t2` must have the same sort, and must be int or real.
-    pub fn Z3_mk_gt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_gt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create greater than or equal to.
     ///
     /// The nodes `t1` and `t2` must have the same sort, and must be int or real.
-    pub fn Z3_mk_ge(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_ge(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Coerce an integer to a real.
     ///
@@ -2426,7 +2307,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_real2int`]
     /// - [`Z3_mk_is_int`]
-    pub fn Z3_mk_int2real(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_int2real(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Coerce a real to an integer.
     ///
@@ -2437,7 +2318,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_int2real`]
     /// - [`Z3_mk_is_int`]
-    pub fn Z3_mk_real2int(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_real2int(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check if a real number is an integer.
     ///
@@ -2445,72 +2326,72 @@ extern "C" {
     ///
     /// - [`Z3_mk_int2real`]
     /// - [`Z3_mk_real2int`]
-    pub fn Z3_mk_is_int(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_is_int(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise negation.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_bvnot(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvnot(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Take conjunction of bits in vector, return vector of length 1.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_bvredand(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvredand(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Take disjunction of bits in vector, return vector of length 1.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_bvredor(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvredor(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise and.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvand(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvand(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise or.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvor(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvor(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise exclusive-or.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvxor(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvxor(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise nand.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvnand(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvnand(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise nor.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvnor(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvnor(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Bitwise xnor.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvxnor(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvxnor(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Standard two's complement unary minus.
     ///
     /// The node `t1` must have bit-vector sort.
-    pub fn Z3_mk_bvneg(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvneg(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Standard two's complement addition.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvadd(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvadd(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Standard two's complement subtraction.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsub(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsub(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Standard two's complement multiplication.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvmul(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvmul(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Unsigned division.
     ///
@@ -2519,7 +2400,7 @@ extern "C" {
     /// is undefined.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvudiv(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvudiv(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed division.
     ///
@@ -2532,7 +2413,7 @@ extern "C" {
     /// If `t2` is zero, then the result is undefined.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsdiv(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsdiv(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Unsigned remainder.
     ///
@@ -2541,7 +2422,7 @@ extern "C" {
     /// If `t2` is zero, then the result is undefined.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvurem(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvurem(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed remainder (sign follows dividend).
     ///
@@ -2555,7 +2436,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_bvsmod`]
-    pub fn Z3_mk_bvsrem(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsrem(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed remainder (sign follows divisor).
     ///
@@ -2566,12 +2447,12 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_bvsrem`]
-    pub fn Z3_mk_bvsmod(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsmod(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Unsigned less than.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvult(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvult(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed less than.
     ///
@@ -2584,37 +2465,37 @@ extern "C" {
     /// ```
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvslt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvslt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Unsigned less than or equal to.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvule(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvule(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed less than or equal to.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsle(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsle(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Unsigned greater than or equal to.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvuge(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvuge(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed greater than or equal to.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsge(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsge(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Unsigned greater than.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvugt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvugt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Two's complement signed greater than.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsgt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsgt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Concatenate the given bit-vectors.
     ///
@@ -2622,37 +2503,37 @@ extern "C" {
     ///
     /// The result is a bit-vector of size `n1+n2`, where `n1` (`n2`) is the size
     /// of `t1` (`t2`).
-    pub fn Z3_mk_concat(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_concat(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Extract the bits `high` down to `low` from a bit-vector of
     /// size `m` to yield a new bit-vector of size `n`, where `n = high - low + 1`.
     ///
     /// The node `t1` must have a bit-vector sort.
     pub fn Z3_mk_extract(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         high: ::std::os::raw::c_uint,
         low: ::std::os::raw::c_uint,
-        t1: Z3_ast,
-    ) -> Z3_ast;
+        t1: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Sign-extend of the given bit-vector to the (signed) equivalent bit-vector of
     /// size `m+i`, where `m` is the size of the given
     /// bit-vector.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_sign_ext(c: Z3_context, i: ::std::os::raw::c_uint, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_sign_ext(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Extend the given bit-vector with zeros to the (unsigned) equivalent
     /// bit-vector of size `m+i`, where `m` is the size of the
     /// given bit-vector.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_zero_ext(c: Z3_context, i: ::std::os::raw::c_uint, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_zero_ext(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Repeat the given bit-vector up length `i`.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_repeat(c: Z3_context, i: ::std::os::raw::c_uint, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_repeat(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Shift left.
     ///
@@ -2664,7 +2545,7 @@ extern "C" {
     /// programming language or assembly architecture you are modeling.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvshl(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvshl(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Logical shift right.
     ///
@@ -2676,7 +2557,7 @@ extern "C" {
     /// programming language or assembly architecture you are modeling.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvlshr(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvlshr(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Arithmetic shift right.
     ///
@@ -2689,27 +2570,27 @@ extern "C" {
     /// programming language or assembly architecture you are modeling.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvashr(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvashr(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Rotate bits of `t1` to the left `i` times.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_rotate_left(c: Z3_context, i: ::std::os::raw::c_uint, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_rotate_left(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Rotate bits of `t1` to the right `i` times.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_rotate_right(c: Z3_context, i: ::std::os::raw::c_uint, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_rotate_right(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Rotate bits of `t1` to the left `t2` times.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_ext_rotate_left(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_ext_rotate_left(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Rotate bits of `t1` to the right `t2` times.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_ext_rotate_right(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_ext_rotate_right(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an `n` bit bit-vector from the integer argument `t1`.
     ///
@@ -2717,7 +2598,7 @@ extern "C" {
     /// from `0` to `n-1`) is `1` if `(t1 div 2^i) mod 2` is `1`.
     ///
     /// The node `t1` must have integer sort.
-    pub fn Z3_mk_int2bv(c: Z3_context, n: ::std::os::raw::c_uint, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_int2bv(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an integer from the bit-vector argument `t1`.
     /// If `is_signed` is false, then the bit-vector `t1` is treated as unsigned.
@@ -2726,70 +2607,70 @@ extern "C" {
     /// If `is_signed` is true, `t1` is treated as a signed bit-vector.
     ///
     /// The node `t1` must have a bit-vector sort.
-    pub fn Z3_mk_bv2int(c: Z3_context, t1: Z3_ast, is_signed: bool) -> Z3_ast;
+    pub fn Z3_mk_bv2int(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, is_signed: bool) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise addition
     /// of `t1` and `t2` does not overflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
     pub fn Z3_mk_bvadd_no_overflow(
-        c: Z3_context,
-        t1: Z3_ast,
-        t2: Z3_ast,
+        c: NonNull<Z3_context>,
+        t1: NonNull<Z3_ast>,
+        t2: NonNull<Z3_ast>,
         is_signed: bool,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise signed addition
     /// of `t1` and `t2` does not underflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvadd_no_underflow(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvadd_no_underflow(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise signed subtraction
     /// of `t1` and `t2` does not overflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsub_no_overflow(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsub_no_overflow(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise subtraction
     /// of `t1` and `t2` does not underflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
     pub fn Z3_mk_bvsub_no_underflow(
-        c: Z3_context,
-        t1: Z3_ast,
-        t2: Z3_ast,
+        c: NonNull<Z3_context>,
+        t1: NonNull<Z3_ast>,
+        t2: NonNull<Z3_ast>,
         is_signed: bool,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise signed division
     /// of `t1` and `t2` does not overflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvsdiv_no_overflow(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvsdiv_no_overflow(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check that bit-wise negation does not overflow when
     /// `t1` is interpreted as a signed bit-vector.
     ///
     /// The node `t1` must have bit-vector sort.
-    pub fn Z3_mk_bvneg_no_overflow(c: Z3_context, t1: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvneg_no_overflow(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise multiplication
     /// of `t1` and `t2` does not overflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
     pub fn Z3_mk_bvmul_no_overflow(
-        c: Z3_context,
-        t1: Z3_ast,
-        t2: Z3_ast,
+        c: NonNull<Z3_context>,
+        t1: NonNull<Z3_ast>,
+        t2: NonNull<Z3_ast>,
         is_signed: bool,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create a predicate that checks that the bit-wise signed multiplication
     /// of `t1` and `t2` does not underflow.
     ///
     /// The nodes `t1` and `t2` must have the same bit-vector sort.
-    pub fn Z3_mk_bvmul_no_underflow(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_bvmul_no_underflow(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Array read.
     /// The argument `a` is the array and `i` is the index of the array that gets read.
@@ -2802,16 +2683,16 @@ extern "C" {
     ///
     /// - [`Z3_mk_array_sort`]
     /// - [`Z3_mk_store`]
-    pub fn Z3_mk_select(c: Z3_context, a: Z3_ast, i: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_select(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, i: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// n-ary Array read.
     /// The argument `a` is the array and `idxs` are the indices of the array that gets read.
     pub fn Z3_mk_select_n(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         n: ::std::os::raw::c_uint,
         idxs: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Array update.
     ///
@@ -2827,16 +2708,16 @@ extern "C" {
     ///
     /// - [`Z3_mk_array_sort`]
     /// - [`Z3_mk_select`]
-    pub fn Z3_mk_store(c: Z3_context, a: Z3_ast, i: Z3_ast, v: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_store(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, i: NonNull<Z3_ast>, v: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// n-ary Array update.
     pub fn Z3_mk_store_n(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         n: ::std::os::raw::c_uint,
         idxs: *const Z3_ast,
-        v: Z3_ast,
-    ) -> Z3_ast;
+        v: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create the constant array.
     ///
@@ -2846,7 +2727,7 @@ extern "C" {
     /// - `c`: logical context.
     /// - `domain`: domain sort for the array.
     /// - `v`: value that the array maps to.
-    pub fn Z3_mk_const_array(c: Z3_context, domain: Z3_sort, v: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_const_array(c: NonNull<Z3_context>, domain: NonNull<Z3_sort>, v: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Map f on the argument arrays.
     ///
@@ -2860,11 +2741,11 @@ extern "C" {
     /// - [`Z3_mk_store`]
     /// - [`Z3_mk_select`]
     pub fn Z3_mk_map(
-        c: Z3_context,
-        f: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        f: NonNull<Z3_func_decl>,
         n: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Access the array default value.
     /// Produces the default range value, for arrays that can be represented as
@@ -2872,64 +2753,64 @@ extern "C" {
     ///
     /// - `c`: logical context.
     /// - `array`: array value whose default range value is accessed.
-    pub fn Z3_mk_array_default(c: Z3_context, array: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_array_default(c: NonNull<Z3_context>, array: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create array with the same interpretation as a function.
     /// The array satisfies the property (f x) = (select (_ as-array f) x)
     /// for every argument x.
-    pub fn Z3_mk_as_array(c: Z3_context, f: Z3_func_decl) -> Z3_ast;
+    pub fn Z3_mk_as_array(c: NonNull<Z3_context>, f: NonNull<Z3_func_decl>) -> *mut Z3_ast;
 
     /// Create Set type.
-    pub fn Z3_mk_set_sort(c: Z3_context, ty: Z3_sort) -> Z3_sort;
+    pub fn Z3_mk_set_sort(c: NonNull<Z3_context>, ty: NonNull<Z3_sort>) -> *mut Z3_sort;
 
     /// Create the empty set.
-    pub fn Z3_mk_empty_set(c: Z3_context, domain: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_empty_set(c: NonNull<Z3_context>, domain: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create the full set.
-    pub fn Z3_mk_full_set(c: Z3_context, domain: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_full_set(c: NonNull<Z3_context>, domain: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Add an element to a set.
     ///
     /// The first argument must be a set, the second an element.
-    pub fn Z3_mk_set_add(c: Z3_context, set: Z3_ast, elem: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_set_add(c: NonNull<Z3_context>, set: NonNull<Z3_ast>, elem: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Remove an element to a set.
     ///
     /// The first argument must be a set, the second an element.
-    pub fn Z3_mk_set_del(c: Z3_context, set: Z3_ast, elem: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_set_del(c: NonNull<Z3_context>, set: NonNull<Z3_ast>, elem: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Take the union of a list of sets.
     pub fn Z3_mk_set_union(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Take the intersection of a list of sets.
     pub fn Z3_mk_set_intersect(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Take the set difference between two sets.
-    pub fn Z3_mk_set_difference(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_set_difference(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Take the complement of a set.
-    pub fn Z3_mk_set_complement(c: Z3_context, arg: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_set_complement(c: NonNull<Z3_context>, arg: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check for set membership.
     ///
     /// The first argument should be an element type of the set.
-    pub fn Z3_mk_set_member(c: Z3_context, elem: Z3_ast, set: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_set_member(c: NonNull<Z3_context>, elem: NonNull<Z3_ast>, set: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check for subsetness of sets.
-    pub fn Z3_mk_set_subset(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_set_subset(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create array extensionality index given two arrays with the same sort.
     /// The meaning is given by the axiom:
     /// (=> (= (select A (array-ext A B)) (select B (array-ext A B))) (= A B))
-    pub fn Z3_mk_array_ext(c: Z3_context, arg1: Z3_ast, arg2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_array_ext(c: NonNull<Z3_context>, arg1: NonNull<Z3_ast>, arg2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a numeral of a given sort.
     ///
@@ -2942,7 +2823,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_int`]
     /// - [`Z3_mk_unsigned_int`]
-    pub fn Z3_mk_numeral(c: Z3_context, numeral: Z3_string, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_numeral(c: NonNull<Z3_context>, numeral: NonNull<Z3_string>, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a real from a fraction.
     ///
@@ -2960,10 +2841,10 @@ extern "C" {
     /// - [`Z3_mk_int`]
     /// - [`Z3_mk_unsigned_int`]
     pub fn Z3_mk_real(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num: ::std::os::raw::c_int,
         den: ::std::os::raw::c_int,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create a numeral of an int, bit-vector, or finite-domain sort.
     ///
@@ -2973,7 +2854,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_int(c: Z3_context, v: ::std::os::raw::c_int, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_int(c: NonNull<Z3_context>, v: ::std::os::raw::c_int, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a numeral of a int, bit-vector, or finite-domain sort.
     ///
@@ -2983,7 +2864,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_unsigned_int(c: Z3_context, v: ::std::os::raw::c_uint, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_unsigned_int(c: NonNull<Z3_context>, v: ::std::os::raw::c_uint, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a numeral of a int, bit-vector, or finite-domain sort.
     ///
@@ -2993,7 +2874,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_int64(c: Z3_context, v: i64, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_int64(c: NonNull<Z3_context>, v: i64, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a numeral of a int, bit-vector, or finite-domain sort.
     ///
@@ -3003,59 +2884,59 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_unsigned_int64(c: Z3_context, v: u64, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_unsigned_int64(c: NonNull<Z3_context>, v: u64, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// create a bit-vector numeral from a vector of Booleans.
     ///
     /// # See also:
     ///
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_bv_numeral(c: Z3_context, sz: ::std::os::raw::c_uint, bits: *const bool)
-        -> Z3_ast;
+    pub fn Z3_mk_bv_numeral(c: NonNull<Z3_context>, sz: ::std::os::raw::c_uint, bits: *const bool)
+        -> *mut Z3_ast;
 
     /// Create a sequence sort out of the sort for the elements.
-    pub fn Z3_mk_seq_sort(c: Z3_context, s: Z3_sort) -> Z3_sort;
+    pub fn Z3_mk_seq_sort(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> *mut Z3_sort;
 
     /// Check if `s` is a sequence sort.
-    pub fn Z3_is_seq_sort(c: Z3_context, s: Z3_sort) -> bool;
+    pub fn Z3_is_seq_sort(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> bool;
 
     /// Create a regular expression sort out of a sequence sort.
-    pub fn Z3_mk_re_sort(c: Z3_context, seq: Z3_sort) -> Z3_sort;
+    pub fn Z3_mk_re_sort(c: NonNull<Z3_context>, seq: NonNull<Z3_sort>) -> *mut Z3_sort;
 
     /// Check if `s` is a regular expression sort.
-    pub fn Z3_is_re_sort(c: Z3_context, s: Z3_sort) -> bool;
+    pub fn Z3_is_re_sort(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> bool;
 
     /// Create a sort for 8 bit strings.
     ///
     /// This function creates a sort for ASCII strings.
     /// Each character is 8 bits.
-    pub fn Z3_mk_string_sort(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_string_sort(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Check if `s` is a string sort.
-    pub fn Z3_is_string_sort(c: Z3_context, s: Z3_sort) -> bool;
+    pub fn Z3_is_string_sort(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> bool;
 
     /// Create a string constant out of the string that is passed in
-    pub fn Z3_mk_string(c: Z3_context, s: Z3_string) -> Z3_ast;
+    pub fn Z3_mk_string(c: NonNull<Z3_context>, s: NonNull<Z3_string>) -> *mut Z3_ast;
 
     /// Determine if `s` is a string constant.
-    pub fn Z3_is_string(c: Z3_context, s: Z3_ast) -> bool;
+    pub fn Z3_is_string(c: NonNull<Z3_context>, s: NonNull<Z3_ast>) -> bool;
 
     /// Retrieve the string constant stored in `s`.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_is_string(c, s)`
-    pub fn Z3_get_string(c: Z3_context, s: Z3_ast) -> Z3_string;
+    pub fn Z3_get_string(c: NonNull<Z3_context>, s: NonNull<Z3_ast>) -> Z3_string;
 
     /// Create an empty sequence of the sequence sort `seq`.
     ///
     /// # Preconditions:
     ///
     /// - `s` is a sequence sort.
-    pub fn Z3_mk_seq_empty(c: Z3_context, seq: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_seq_empty(c: NonNull<Z3_context>, seq: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a unit sequence of `a`.
-    pub fn Z3_mk_seq_unit(c: Z3_context, a: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_unit(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Concatenate sequences.
     ///
@@ -3063,108 +2944,108 @@ extern "C" {
     ///
     /// - `n > 0`
     pub fn Z3_mk_seq_concat(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         n: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Check if `prefix` is a prefix of `s`.
     ///
     /// # Preconditions:
     ///
     /// - `prefix` and `s` are the same sequence sorts.
-    pub fn Z3_mk_seq_prefix(c: Z3_context, prefix: Z3_ast, s: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_prefix(c: NonNull<Z3_context>, prefix: NonNull<Z3_ast>, s: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check if `suffix` is a suffix of `s`.
     ///
     /// # Preconditions:
     ///
     /// - `suffix` and `s` are the same sequence sorts.
-    pub fn Z3_mk_seq_suffix(c: Z3_context, suffix: Z3_ast, s: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_suffix(c: NonNull<Z3_context>, suffix: NonNull<Z3_ast>, s: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check if `container` contains `containee`.
     ///
     /// # Preconditions:
     ///
     /// - `container` and `containee` are the same sequence sorts.
-    pub fn Z3_mk_seq_contains(c: Z3_context, container: Z3_ast, containee: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_contains(c: NonNull<Z3_context>, container: NonNull<Z3_ast>, containee: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Extract subsequence starting at `offset` of `length`.
-    pub fn Z3_mk_seq_extract(c: Z3_context, s: Z3_ast, offset: Z3_ast, length: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_extract(c: NonNull<Z3_context>, s: NonNull<Z3_ast>, offset: NonNull<Z3_ast>, length: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Replace the first occurrence of `src` with `dst` in `s`.
-    pub fn Z3_mk_seq_replace(c: Z3_context, s: Z3_ast, src: Z3_ast, dst: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_replace(c: NonNull<Z3_context>, s: NonNull<Z3_ast>, src: NonNull<Z3_ast>, dst: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Retrieve from `s` the unit sequence positioned at position `index`.
-    pub fn Z3_mk_seq_at(c: Z3_context, s: Z3_ast, index: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_at(c: NonNull<Z3_context>, s: NonNull<Z3_ast>, index: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return the length of the sequence `s`.
-    pub fn Z3_mk_seq_length(c: Z3_context, s: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_length(c: NonNull<Z3_context>, s: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return index of first occurrence of `substr` in `s` starting from offset `offset`.
     /// If `s` does not contain `substr`, then the value is -1, if `offset` is the length of `s`, then the value is -1 as well.
     /// The function is under-specified if `offset` is negative or larger than the length of `s`.
-    pub fn Z3_mk_seq_index(c: Z3_context, s: Z3_ast, substr: Z3_ast, offset: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_index(c: NonNull<Z3_context>, s: NonNull<Z3_ast>, substr: NonNull<Z3_ast>, offset: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Convert string to integer.
-    pub fn Z3_mk_str_to_int(c: Z3_context, s: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_str_to_int(c: NonNull<Z3_context>, s: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Integer to string conversion.
-    pub fn Z3_mk_int_to_str(c: Z3_context, s: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_int_to_str(c: NonNull<Z3_context>, s: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a regular expression that accepts the sequence `seq`.
-    pub fn Z3_mk_seq_to_re(c: Z3_context, seq: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_to_re(c: NonNull<Z3_context>, seq: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Check if `seq` is in the language generated by the regular expression `re`.
-    pub fn Z3_mk_seq_in_re(c: Z3_context, seq: Z3_ast, re: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_seq_in_re(c: NonNull<Z3_context>, seq: NonNull<Z3_ast>, re: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create the regular language `re+`.
-    pub fn Z3_mk_re_plus(c: Z3_context, re: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_plus(c: NonNull<Z3_context>, re: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create the regular language `re*`.
-    pub fn Z3_mk_re_star(c: Z3_context, re: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_star(c: NonNull<Z3_context>, re: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create the regular language `re?`.
-    pub fn Z3_mk_re_option(c: Z3_context, re: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_option(c: NonNull<Z3_context>, re: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create the union of the regular languages.
     ///
     /// # Preconditions:
     ///
     /// - `n > 0`
-    pub fn Z3_mk_re_union(c: Z3_context, n: ::std::os::raw::c_uint, args: *const Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_union(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, args: *const Z3_ast) -> *mut Z3_ast;
 
     /// Create the concatenation of the regular languages.
     ///
     /// # Preconditions:
     ///
     /// - `n > 0`
-    pub fn Z3_mk_re_concat(c: Z3_context, n: ::std::os::raw::c_uint, args: *const Z3_ast)
-        -> Z3_ast;
+    pub fn Z3_mk_re_concat(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, args: *const Z3_ast)
+        -> *mut Z3_ast;
 
     /// Create the range regular expression over two sequences of length 1.
-    pub fn Z3_mk_re_range(c: Z3_context, lo: Z3_ast, hi: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_range(c: NonNull<Z3_context>, lo: NonNull<Z3_ast>, hi: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a regular expression that accepts all singleton sequences of the regular expression sort.
     ///
     /// Requires Z3 4.8.13 or later.
-    pub fn Z3_mk_re_allchar(c: Z3_context, regex_sort: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_re_allchar(c: NonNull<Z3_context>, regex_sort: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a regular expression loop. The supplied regular expression `r` is repeated
     /// between `lo` and `hi` times. The `lo` should be below `hi` with one execution: when
     /// supplying the value `hi` as 0, the meaning is to repeat the argument `r` at least
     /// `lo` number of times, and with an unbounded upper bound.
     pub fn Z3_mk_re_loop(
-        c: Z3_context,
-        r: Z3_ast,
+        c: NonNull<Z3_context>,
+        r: NonNull<Z3_ast>,
         lo: ::std::os::raw::c_uint,
         hi: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create a power regular expression.
     ///
     /// Requires Z3 4.8.15 or later.
-    pub fn Z3_mk_re_power(c: Z3_context, re: Z3_ast, n: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_mk_re_power(c: NonNull<Z3_context>, re: NonNull<Z3_ast>, n: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Create the intersection of the regular languages.
     ///
@@ -3172,32 +3053,32 @@ extern "C" {
     ///
     /// - `n > 0`
     pub fn Z3_mk_re_intersect(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         n: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Create the complement of the regular language `re`.
-    pub fn Z3_mk_re_complement(c: Z3_context, re: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_complement(c: NonNull<Z3_context>, re: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create the difference of regular expressions.
     ///
     /// Requires Z3 4.8.14 or later.
-    pub fn Z3_mk_re_diff(c: Z3_context, re1: Z3_ast, re2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_re_diff(c: NonNull<Z3_context>, re1: NonNull<Z3_ast>, re2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create an empty regular expression of sort `re`.
     ///
     /// # Preconditions:
     ///
     /// - `re` is a regular expression sort.
-    pub fn Z3_mk_re_empty(c: Z3_context, re: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_re_empty(c: NonNull<Z3_context>, re: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create an universal regular expression of sort `re`.
     ///
     /// # Preconditions:
     ///
     /// - `re` is a regular expression sort.
-    pub fn Z3_mk_re_full(c: Z3_context, re: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_re_full(c: NonNull<Z3_context>, re: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a pattern for quantifier instantiation.
     ///
@@ -3218,10 +3099,10 @@ extern "C" {
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_exists`]
     pub fn Z3_mk_pattern(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_patterns: ::std::os::raw::c_uint,
         terms: *const Z3_ast,
-    ) -> Z3_pattern;
+    ) -> *mut Z3_pattern;
 
     /// Create a bound variable.
     ///
@@ -3250,7 +3131,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_exists`]
-    pub fn Z3_mk_bound(c: Z3_context, index: ::std::os::raw::c_uint, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_bound(c: NonNull<Z3_context>, index: ::std::os::raw::c_uint, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a forall formula. It takes an expression `body` that contains bound variables
     /// of the same sorts as the sorts listed in the array `sorts`. The bound variables are de-Bruijn indices created
@@ -3274,15 +3155,15 @@ extern "C" {
     /// - [`Z3_mk_bound`]
     /// - [`Z3_mk_exists`]
     pub fn Z3_mk_forall(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         weight: ::std::os::raw::c_uint,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
         num_decls: ::std::os::raw::c_uint,
         sorts: *const Z3_sort,
         decl_names: *const Z3_symbol,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create an exists formula. Similar to [`Z3_mk_forall`].
     ///
@@ -3293,15 +3174,15 @@ extern "C" {
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_quantifier`]
     pub fn Z3_mk_exists(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         weight: ::std::os::raw::c_uint,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
         num_decls: ::std::os::raw::c_uint,
         sorts: *const Z3_sort,
         decl_names: *const Z3_symbol,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a quantifier - universal or existential, with pattern hints.
     /// See the documentation for [`Z3_mk_forall`] for an explanation of the parameters.
@@ -3323,7 +3204,7 @@ extern "C" {
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_exists`]
     pub fn Z3_mk_quantifier(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         is_forall: bool,
         weight: ::std::os::raw::c_uint,
         num_patterns: ::std::os::raw::c_uint,
@@ -3331,8 +3212,8 @@ extern "C" {
         num_decls: ::std::os::raw::c_uint,
         sorts: *const Z3_sort,
         decl_names: *const Z3_symbol,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a quantifier - universal or existential, with pattern hints, no patterns, and attributes
     ///
@@ -3357,11 +3238,11 @@ extern "C" {
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_exists`]
     pub fn Z3_mk_quantifier_ex(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         is_forall: bool,
         weight: ::std::os::raw::c_uint,
-        quantifier_id: Z3_symbol,
-        skolem_id: Z3_symbol,
+        quantifier_id: NonNull<Z3_symbol>,
+        skolem_id: NonNull<Z3_symbol>,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
         num_no_patterns: ::std::os::raw::c_uint,
@@ -3369,8 +3250,8 @@ extern "C" {
         num_decls: ::std::os::raw::c_uint,
         sorts: *const Z3_sort,
         decl_names: *const Z3_symbol,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a universal quantifier using a list of constants that
     /// will form the set of bound variables.
@@ -3389,14 +3270,14 @@ extern "C" {
     /// - [`Z3_mk_pattern`]
     /// - [`Z3_mk_exists_const`]
     pub fn Z3_mk_forall_const(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         weight: ::std::os::raw::c_uint,
         num_bound: ::std::os::raw::c_uint,
         bound: *const Z3_app,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Similar to [`Z3_mk_forall_const`].
     ///
@@ -3417,44 +3298,44 @@ extern "C" {
     /// - [`Z3_mk_pattern`]
     /// - [`Z3_mk_forall_const`]
     pub fn Z3_mk_exists_const(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         weight: ::std::os::raw::c_uint,
         num_bound: ::std::os::raw::c_uint,
         bound: *const Z3_app,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a universal or existential quantifier using a list of
     /// constants that will form the set of bound variables.
     pub fn Z3_mk_quantifier_const(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         is_forall: bool,
         weight: ::std::os::raw::c_uint,
         num_bound: ::std::os::raw::c_uint,
         bound: *const Z3_app,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a universal or existential quantifier using a list of
     /// constants that will form the set of bound variables.
     pub fn Z3_mk_quantifier_const_ex(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         is_forall: bool,
         weight: ::std::os::raw::c_uint,
-        quantifier_id: Z3_symbol,
-        skolem_id: Z3_symbol,
+        quantifier_id: NonNull<Z3_symbol>,
+        skolem_id: NonNull<Z3_symbol>,
         num_bound: ::std::os::raw::c_uint,
         bound: *const Z3_app,
         num_patterns: ::std::os::raw::c_uint,
         patterns: *const Z3_pattern,
         num_no_patterns: ::std::os::raw::c_uint,
         no_patterns: *const Z3_ast,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a lambda expression.
     ///
@@ -3484,12 +3365,12 @@ extern "C" {
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_lambda_const`]
     pub fn Z3_mk_lambda(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_decls: ::std::os::raw::c_uint,
         sorts: *const Z3_sort,
         decl_names: *const Z3_symbol,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Create a lambda expression using a list of constants that form the set
     /// of bound variables
@@ -3505,17 +3386,17 @@ extern "C" {
     /// - [`Z3_mk_forall`]
     /// - [`Z3_mk_lambda`]
     pub fn Z3_mk_lambda_const(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_bound: ::std::os::raw::c_uint,
         bound: *const Z3_app,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Return `SymbolKind::Int` if the symbol was constructed
     /// using [`Z3_mk_int_symbol`],
     /// and `SymbolKind::String` if the symbol
     /// was constructed using [`Z3_mk_string_symbol`].
-    pub fn Z3_get_symbol_kind(c: Z3_context, s: Z3_symbol) -> SymbolKind;
+    pub fn Z3_get_symbol_kind(c: NonNull<Z3_context>, s: NonNull<Z3_symbol>) -> SymbolKind;
 
     /// Return the symbol int value.
     ///
@@ -3526,7 +3407,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_int_symbol`]
-    pub fn Z3_get_symbol_int(c: Z3_context, s: Z3_symbol) -> ::std::os::raw::c_int;
+    pub fn Z3_get_symbol_int(c: NonNull<Z3_context>, s: NonNull<Z3_symbol>) -> ::std::os::raw::c_int;
 
     /// Return the symbol name.
     ///
@@ -3541,13 +3422,13 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_string_symbol`]
-    pub fn Z3_get_symbol_string(c: Z3_context, s: Z3_symbol) -> Z3_string;
+    pub fn Z3_get_symbol_string(c: NonNull<Z3_context>, s: NonNull<Z3_symbol>) -> Z3_string;
 
     /// Return the sort name as a symbol.
-    pub fn Z3_get_sort_name(c: Z3_context, d: Z3_sort) -> Z3_symbol;
+    pub fn Z3_get_sort_name(c: NonNull<Z3_context>, d: NonNull<Z3_sort>) -> *mut Z3_symbol;
 
     /// Return a unique identifier for `s`.
-    pub fn Z3_get_sort_id(c: Z3_context, s: Z3_sort) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_sort_id(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> ::std::os::raw::c_uint;
 
     /// Convert a [`Z3_sort`] into [`Z3_ast`]. This is just type casting.
     ///
@@ -3556,17 +3437,17 @@ extern "C" {
     /// - [`Z3_app_to_ast`]
     /// - [`Z3_func_decl_to_ast`]
     /// - [`Z3_pattern_to_ast`]
-    pub fn Z3_sort_to_ast(c: Z3_context, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_sort_to_ast(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// compare sorts.
-    pub fn Z3_is_eq_sort(c: Z3_context, s1: Z3_sort, s2: Z3_sort) -> bool;
+    pub fn Z3_is_eq_sort(c: NonNull<Z3_context>, s1: NonNull<Z3_sort>, s2: NonNull<Z3_sort>) -> bool;
 
     /// Return the sort kind (e.g., array, tuple, int, bool, etc).
     ///
     /// # See also:
     ///
     /// - [`SortKind`]
-    pub fn Z3_get_sort_kind(c: Z3_context, t: Z3_sort) -> SortKind;
+    pub fn Z3_get_sort_kind(c: NonNull<Z3_context>, t: NonNull<Z3_sort>) -> SortKind;
 
     /// Return the size of the given bit-vector sort.
     ///
@@ -3578,11 +3459,11 @@ extern "C" {
     ///
     /// - [`Z3_mk_bv_sort`]
     /// - [`Z3_get_sort_kind`]
-    pub fn Z3_get_bv_sort_size(c: Z3_context, t: Z3_sort) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_bv_sort_size(c: NonNull<Z3_context>, t: NonNull<Z3_sort>) -> ::std::os::raw::c_uint;
 
     /// Store the size of the sort in `r`. Return `false` if the call failed.
     /// That is, `Z3_get_sort_kind(s) == SortKind::FiniteDomain`
-    pub fn Z3_get_finite_domain_sort_size(c: Z3_context, s: Z3_sort, r: *mut u64) -> bool;
+    pub fn Z3_get_finite_domain_sort_size(c: NonNull<Z3_context>, s: NonNull<Z3_sort>, r: *mut u64) -> bool;
 
     /// Return the domain of the given array sort.
     ///
@@ -3597,7 +3478,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_array_sort`]
     /// - [`Z3_get_sort_kind`]
-    pub fn Z3_get_array_sort_domain(c: Z3_context, t: Z3_sort) -> Z3_sort;
+    pub fn Z3_get_array_sort_domain(c: NonNull<Z3_context>, t: NonNull<Z3_sort>) -> *mut Z3_sort;
 
     /// Return the range of the given array sort.
     ///
@@ -3609,7 +3490,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_array_sort`]
     /// - [`Z3_get_sort_kind`]
-    pub fn Z3_get_array_sort_range(c: Z3_context, t: Z3_sort) -> Z3_sort;
+    pub fn Z3_get_array_sort_range(c: NonNull<Z3_context>, t: NonNull<Z3_sort>) -> *mut Z3_sort;
 
     /// Return the constructor declaration of the given tuple
     /// sort.
@@ -3622,7 +3503,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_tuple_sort`]
     /// - [`Z3_get_sort_kind`]
-    pub fn Z3_get_tuple_sort_mk_decl(c: Z3_context, t: Z3_sort) -> Z3_func_decl;
+    pub fn Z3_get_tuple_sort_mk_decl(c: NonNull<Z3_context>, t: NonNull<Z3_sort>) -> *mut Z3_func_decl;
 
     /// Return the number of fields of the given tuple sort.
     ///
@@ -3634,7 +3515,7 @@ extern "C" {
     ///
     /// - [`Z3_mk_tuple_sort`]
     /// - [`Z3_get_sort_kind`]
-    pub fn Z3_get_tuple_sort_num_fields(c: Z3_context, t: Z3_sort) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_tuple_sort_num_fields(c: NonNull<Z3_context>, t: NonNull<Z3_sort>) -> ::std::os::raw::c_uint;
 
     /// Return the i-th field declaration (i.e., projection function declaration)
     /// of the given tuple sort.
@@ -3649,10 +3530,10 @@ extern "C" {
     /// - [`Z3_mk_tuple_sort`]
     /// - [`Z3_get_sort_kind`]
     pub fn Z3_get_tuple_sort_field_decl(
-        c: Z3_context,
-        t: Z3_sort,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_sort>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Return number of constructors for datatype.
     ///
@@ -3666,8 +3547,8 @@ extern "C" {
     /// - [`Z3_get_datatype_sort_recognizer`]
     /// - [`Z3_get_datatype_sort_constructor_accessor`]
     pub fn Z3_get_datatype_sort_num_constructors(
-        c: Z3_context,
-        t: Z3_sort,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_sort>,
     ) -> ::std::os::raw::c_uint;
 
     /// Return idx'th constructor.
@@ -3683,10 +3564,10 @@ extern "C" {
     /// - [`Z3_get_datatype_sort_recognizer`]
     /// - [`Z3_get_datatype_sort_constructor_accessor`]
     pub fn Z3_get_datatype_sort_constructor(
-        c: Z3_context,
-        t: Z3_sort,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_sort>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Return idx'th recognizer.
     ///
@@ -3701,10 +3582,10 @@ extern "C" {
     /// - [`Z3_get_datatype_sort_constructor`]
     /// - [`Z3_get_datatype_sort_constructor_accessor`]
     pub fn Z3_get_datatype_sort_recognizer(
-        c: Z3_context,
-        t: Z3_sort,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_sort>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Return `idx_a`'th accessor for the `idx_c`'th constructor.
     ///
@@ -3720,11 +3601,11 @@ extern "C" {
     /// - [`Z3_get_datatype_sort_constructor`]
     /// - [`Z3_get_datatype_sort_recognizer`]
     pub fn Z3_get_datatype_sort_constructor_accessor(
-        c: Z3_context,
-        t: Z3_sort,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_sort>,
         idx_c: ::std::os::raw::c_uint,
         idx_a: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Update record field with a value.
     ///
@@ -3743,11 +3624,11 @@ extern "C" {
     /// - `Z3_get_sort_kind(Z3_get_sort(c, t)) == Z3_get_domain(c, field_access, 1) == SortKind::Datatype`
     /// - `Z3_get_sort(c, value) == Z3_get_range(c, field_access)`
     pub fn Z3_datatype_update_field(
-        c: Z3_context,
-        field_access: Z3_func_decl,
-        t: Z3_ast,
-        value: Z3_ast,
-    ) -> Z3_ast;
+        c: NonNull<Z3_context>,
+        field_access: NonNull<Z3_func_decl>,
+        t: NonNull<Z3_ast>,
+        value: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Return arity of relation.
     ///
@@ -3758,7 +3639,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_relation_column`]
-    pub fn Z3_get_relation_arity(c: Z3_context, s: Z3_sort) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_relation_arity(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> ::std::os::raw::c_uint;
 
     /// Return sort at i'th column of relation sort.
     ///
@@ -3771,63 +3652,63 @@ extern "C" {
     ///
     /// - [`Z3_get_relation_arity`]
     pub fn Z3_get_relation_column(
-        c: Z3_context,
-        s: Z3_sort,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_sort>,
         col: ::std::os::raw::c_uint,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Pseudo-Boolean relations.
     ///
     /// Encode `p1 + p2 + ... + pn <= k`
     pub fn Z3_mk_atmost(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
         k: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Pseudo-Boolean relations.
     ///
     /// Encode `p1 + p2 + ... + pn >= k`
     pub fn Z3_mk_atleast(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
         k: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Pseudo-Boolean relations.
     ///
     /// Encode `k1*p1 + k2*p2 + ... + kn*pn <= k`
     pub fn Z3_mk_pble(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
         coeffs: *const ::std::os::raw::c_int,
         k: ::std::os::raw::c_int,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Pseudo-Boolean relations.
     ///
     /// Encode `k1*p1 + k2*p2 + ... + kn*pn >= k`
     pub fn Z3_mk_pbge(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
         coeffs: *const ::std::os::raw::c_int,
         k: ::std::os::raw::c_int,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Pseudo-Boolean relations.
     ///
     /// Encode `k1*p1 + k2*p2 + ... + kn*pn = k`
     pub fn Z3_mk_pbeq(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
         coeffs: *const ::std::os::raw::c_int,
         k: ::std::os::raw::c_int,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Convert a [`Z3_func_decl`] into [`Z3_ast`]. This is just type casting.
     ///
@@ -3837,33 +3718,33 @@ extern "C" {
     /// - [`Z3_pattern_to_ast`]
     /// - [`Z3_sort_to_ast`]
     /// - [`Z3_to_func_decl`]
-    pub fn Z3_func_decl_to_ast(c: Z3_context, f: Z3_func_decl) -> Z3_ast;
+    pub fn Z3_func_decl_to_ast(c: NonNull<Z3_context>, f: NonNull<Z3_func_decl>) -> *mut Z3_ast;
 
     /// Compare terms.
-    pub fn Z3_is_eq_func_decl(c: Z3_context, f1: Z3_func_decl, f2: Z3_func_decl) -> bool;
+    pub fn Z3_is_eq_func_decl(c: NonNull<Z3_context>, f1: NonNull<Z3_func_decl>, f2: NonNull<Z3_func_decl>) -> bool;
 
     /// Return a unique identifier for `f`.
-    pub fn Z3_get_func_decl_id(c: Z3_context, f: Z3_func_decl) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_func_decl_id(c: NonNull<Z3_context>, f: NonNull<Z3_func_decl>) -> ::std::os::raw::c_uint;
 
     /// Return the constant declaration name as a symbol.
-    pub fn Z3_get_decl_name(c: Z3_context, d: Z3_func_decl) -> Z3_symbol;
+    pub fn Z3_get_decl_name(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> *mut Z3_symbol;
 
     /// Return declaration kind corresponding to declaration.
-    pub fn Z3_get_decl_kind(c: Z3_context, d: Z3_func_decl) -> DeclKind;
+    pub fn Z3_get_decl_kind(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> DeclKind;
 
     /// Return the number of parameters of the given declaration.
     ///
     /// # See also:
     ///
     /// - [`Z3_get_arity`]
-    pub fn Z3_get_domain_size(c: Z3_context, d: Z3_func_decl) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_domain_size(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> ::std::os::raw::c_uint;
 
     /// Alias for `Z3_get_domain_size`.
     ///
     /// # See also:
     ///
     /// - [`Z3_get_domain_size`]
-    pub fn Z3_get_arity(c: Z3_context, d: Z3_func_decl) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_arity(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> ::std::os::raw::c_uint;
 
     /// Return the sort of the i-th parameter of the given function declaration.
     ///
@@ -3874,16 +3755,16 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_domain_size`]
-    pub fn Z3_get_domain(c: Z3_context, d: Z3_func_decl, i: ::std::os::raw::c_uint) -> Z3_sort;
+    pub fn Z3_get_domain(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>, i: ::std::os::raw::c_uint) -> *mut Z3_sort;
 
     /// Return the range of the given declaration.
     ///
     /// If `d` is a constant (i.e., has zero arguments), then this
     /// function returns the sort of the constant.
-    pub fn Z3_get_range(c: Z3_context, d: Z3_func_decl) -> Z3_sort;
+    pub fn Z3_get_range(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> *mut Z3_sort;
 
     /// Return the number of parameters associated with a declaration.
-    pub fn Z3_get_decl_num_parameters(c: Z3_context, d: Z3_func_decl) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_decl_num_parameters(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> ::std::os::raw::c_uint;
 
     /// Return the parameter type associated with a declaration.
     ///
@@ -3892,8 +3773,8 @@ extern "C" {
     /// - `idx`: is the index of the named parameter it should be between 0 and
     ///   the number of parameters.
     pub fn Z3_get_decl_parameter_kind(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
     ) -> ParameterKind;
 
@@ -3903,8 +3784,8 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::Int`
     pub fn Z3_get_decl_int_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 
@@ -3914,8 +3795,8 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::Double`
     pub fn Z3_get_decl_double_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
     ) -> f64;
 
@@ -3925,10 +3806,10 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::Symbol`
     pub fn Z3_get_decl_symbol_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_symbol;
+    ) -> *mut Z3_symbol;
 
     /// Return the sort value associated with a sort parameter.
     ///
@@ -3936,10 +3817,10 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::Sort`
     pub fn Z3_get_decl_sort_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Return the expression value associated with an expression parameter.
     ///
@@ -3947,10 +3828,10 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::AST`
     pub fn Z3_get_decl_ast_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Return the expression value associated with an expression parameter.
     ///
@@ -3958,10 +3839,10 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::FuncDecl`
     pub fn Z3_get_decl_func_decl_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Return the rational value, as a string, associated with a rational parameter.
     ///
@@ -3969,8 +3850,8 @@ extern "C" {
     ///
     /// - `Z3_get_decl_parameter_kind(c, d, idx) == ParameterKind::Rational`
     pub fn Z3_get_decl_rational_parameter(
-        c: Z3_context,
-        d: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_func_decl>,
         idx: ::std::os::raw::c_uint,
     ) -> Z3_string;
 
@@ -3982,10 +3863,10 @@ extern "C" {
     /// - [`Z3_func_decl_to_ast`]
     /// - [`Z3_pattern_to_ast`]
     /// - [`Z3_sort_to_ast`]
-    pub fn Z3_app_to_ast(c: Z3_context, a: Z3_app) -> Z3_ast;
+    pub fn Z3_app_to_ast(c: NonNull<Z3_context>, a: NonNull<Z3_app>) -> *mut Z3_ast;
 
     /// Return the declaration of a constant or function application.
-    pub fn Z3_get_app_decl(c: Z3_context, a: Z3_app) -> Z3_func_decl;
+    pub fn Z3_get_app_decl(c: NonNull<Z3_context>, a: NonNull<Z3_app>) -> *mut Z3_func_decl;
 
     /// Return the number of argument of an application. If `t`
     /// is an constant, then the number of arguments is 0.
@@ -3993,7 +3874,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_app_arg`]
-    pub fn Z3_get_app_num_args(c: Z3_context, a: Z3_app) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_app_num_args(c: NonNull<Z3_context>, a: NonNull<Z3_app>) -> ::std::os::raw::c_uint;
 
     /// Return the i-th argument of the given application.
     ///
@@ -4004,10 +3885,10 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_app_num_args`]
-    pub fn Z3_get_app_arg(c: Z3_context, a: Z3_app, i: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_get_app_arg(c: NonNull<Z3_context>, a: NonNull<Z3_app>, i: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Compare terms.
-    pub fn Z3_is_eq_ast(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> bool;
+    pub fn Z3_is_eq_ast(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> bool;
 
     /// Return a unique identifier for `t`.
     ///
@@ -4017,35 +3898,35 @@ extern "C" {
     /// different children or different functions have different identifiers.
     /// Variables and quantifiers are also assigned different identifiers according to
     /// their structure.
-    pub fn Z3_get_ast_id(c: Z3_context, t: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_ast_id(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Return a hash code for the given AST.
     ///
     /// The hash code is structural. You can use [`Z3_get_ast_id`]
     /// interchangeably with this function.
-    pub fn Z3_get_ast_hash(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_ast_hash(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Return the sort of an AST node.
     ///
     /// The AST node must be a constant, application, numeral, bound variable, or quantifier.
-    pub fn Z3_get_sort(c: Z3_context, a: Z3_ast) -> Z3_sort;
+    pub fn Z3_get_sort(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_sort;
 
     /// Return true if the given expression `t` is well sorted.
-    pub fn Z3_is_well_sorted(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_is_well_sorted(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Return `Z3_L_TRUE` if `a` is true, `Z3_L_FALSE` if it is false,
     /// and `Z3_L_UNDEF` otherwise.
-    pub fn Z3_get_bool_value(c: Z3_context, a: Z3_ast) -> Z3_lbool;
+    pub fn Z3_get_bool_value(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_lbool;
 
     /// Return the kind of the given AST.
-    pub fn Z3_get_ast_kind(c: Z3_context, a: Z3_ast) -> AstKind;
+    pub fn Z3_get_ast_kind(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> AstKind;
 
-    pub fn Z3_is_app(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_app(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
-    pub fn Z3_is_numeral_ast(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_numeral_ast(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Return true if the given AST is a real algebraic number.
-    pub fn Z3_is_algebraic_number(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_algebraic_number(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Convert an `ast` into an [`Z3_app`]. This is just type casting.
     ///
@@ -4058,7 +3939,7 @@ extern "C" {
     /// - [`Z3_app_to_ast`]
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::App`]
-    pub fn Z3_to_app(c: Z3_context, a: Z3_ast) -> Z3_app;
+    pub fn Z3_to_app(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_app;
 
     /// Convert an AST into a [`Z3_func_decl`]. This is just type casting.
     ///
@@ -4071,7 +3952,7 @@ extern "C" {
     /// - [`Z3_func_decl_to_ast`]
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::FuncDecl`]
-    pub fn Z3_to_func_decl(c: Z3_context, a: Z3_ast) -> Z3_func_decl;
+    pub fn Z3_to_func_decl(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_func_decl;
 
     /// Return numeral value, as a string of a numeric constant term
     ///
@@ -4083,7 +3964,7 @@ extern "C" {
     ///
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_string(c: Z3_context, a: Z3_ast) -> Z3_string;
+    pub fn Z3_get_numeral_string(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> Z3_string;
 
     /// Return numeral as a string in decimal notation.
     /// The result has at most `precision` decimal places.
@@ -4098,8 +3979,8 @@ extern "C" {
     /// - [`Z3_is_algebraic_number`]
     /// - [`AstKind::Numeral`]
     pub fn Z3_get_numeral_decimal_string(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         precision: ::std::os::raw::c_uint,
     ) -> Z3_string;
 
@@ -4112,7 +3993,7 @@ extern "C" {
     ///
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_double(c: Z3_context, a: Z3_ast) -> f64;
+    pub fn Z3_get_numeral_double(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> f64;
 
     /// Return the numerator (as a numeral AST) of a numeral AST of sort Real.
     ///
@@ -4124,7 +4005,7 @@ extern "C" {
     ///
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numerator(c: Z3_context, a: Z3_ast) -> Z3_ast;
+    pub fn Z3_get_numerator(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return the denominator (as a numeral AST) of a numeral AST of sort Real.
     ///
@@ -4136,7 +4017,7 @@ extern "C" {
     ///
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_denominator(c: Z3_context, a: Z3_ast) -> Z3_ast;
+    pub fn Z3_get_denominator(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return numeral value, as a pair of 64 bit numbers if the representation fits.
     ///
@@ -4155,7 +4036,7 @@ extern "C" {
     ///
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_small(c: Z3_context, a: Z3_ast, num: *mut i64, den: *mut i64) -> bool;
+    pub fn Z3_get_numeral_small(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, num: *mut i64, den: *mut i64) -> bool;
 
     /// Similar to [`Z3_get_numeral_string`], but only succeeds if
     /// the value can fit in a machine int. Return `true` if the call succeeded.
@@ -4169,7 +4050,7 @@ extern "C" {
     /// - [`Z3_get_numeral_string`]
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_int(c: Z3_context, v: Z3_ast, i: *mut ::std::os::raw::c_int) -> bool;
+    pub fn Z3_get_numeral_int(c: NonNull<Z3_context>, v: NonNull<Z3_ast>, i: *mut ::std::os::raw::c_int) -> bool;
 
     /// Similar to [`Z3_get_numeral_string`], but only succeeds if
     /// the value can fit in a machine unsigned int.
@@ -4184,7 +4065,7 @@ extern "C" {
     /// - [`Z3_get_numeral_string`]
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_uint(c: Z3_context, v: Z3_ast, u: *mut ::std::os::raw::c_uint) -> bool;
+    pub fn Z3_get_numeral_uint(c: NonNull<Z3_context>, v: NonNull<Z3_ast>, u: *mut ::std::os::raw::c_uint) -> bool;
 
     /// Similar to [`Z3_get_numeral_string`] but only succeeds if the
     /// value can fit in a machine `uint64_t` int.
@@ -4199,7 +4080,7 @@ extern "C" {
     /// - [`Z3_get_numeral_string`]
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_uint64(c: Z3_context, v: Z3_ast, u: *mut u64) -> bool;
+    pub fn Z3_get_numeral_uint64(c: NonNull<Z3_context>, v: NonNull<Z3_ast>, u: *mut u64) -> bool;
 
     /// Similar to [`Z3_get_numeral_string`], but only succeeds if the
     /// value can fit in a machine `int64_t` int.
@@ -4214,7 +4095,7 @@ extern "C" {
     /// - [`Z3_get_numeral_string`]
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
-    pub fn Z3_get_numeral_int64(c: Z3_context, v: Z3_ast, i: *mut i64) -> bool;
+    pub fn Z3_get_numeral_int64(c: NonNull<Z3_context>, v: NonNull<Z3_ast>, i: *mut i64) -> bool;
 
     /// Similar to [`Z3_get_numeral_string`], but only succeeds if the
     /// value can fit as a rational number as
@@ -4230,8 +4111,8 @@ extern "C" {
     /// - [`Z3_get_ast_kind`]
     /// - [`AstKind::Numeral`]
     pub fn Z3_get_numeral_rational_int64(
-        c: Z3_context,
-        v: Z3_ast,
+        c: NonNull<Z3_context>,
+        v: NonNull<Z3_ast>,
         num: *mut i64,
         den: *mut i64,
     ) -> bool;
@@ -4249,10 +4130,10 @@ extern "C" {
     ///
     /// - [`Z3_is_algebraic_number`]
     pub fn Z3_get_algebraic_number_lower(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         precision: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Return an upper bound for the given real algebraic number.
     ///
@@ -4267,10 +4148,10 @@ extern "C" {
     ///
     /// - [`Z3_is_algebraic_number`]
     pub fn Z3_get_algebraic_number_upper(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         precision: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Convert a [`Z3_pattern`] into [`Z3_ast`]. This is just type casting.
     ///
@@ -4279,51 +4160,51 @@ extern "C" {
     /// - [`Z3_app_to_ast`]
     /// - [`Z3_func_decl_to_ast`]
     /// - [`Z3_sort_to_ast`]
-    pub fn Z3_pattern_to_ast(c: Z3_context, p: Z3_pattern) -> Z3_ast;
+    pub fn Z3_pattern_to_ast(c: NonNull<Z3_context>, p: NonNull<Z3_pattern>) -> *mut Z3_ast;
 
     /// Return number of terms in pattern.
-    pub fn Z3_get_pattern_num_terms(c: Z3_context, p: Z3_pattern) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_pattern_num_terms(c: NonNull<Z3_context>, p: NonNull<Z3_pattern>) -> ::std::os::raw::c_uint;
 
     /// Return i'th ast in pattern.
-    pub fn Z3_get_pattern(c: Z3_context, p: Z3_pattern, idx: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_get_pattern(c: NonNull<Z3_context>, p: NonNull<Z3_pattern>, idx: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Return index of de-Bruijn bound variable.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Var`
-    pub fn Z3_get_index_value(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_index_value(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Determine if quantifier is universal.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_is_quantifier_forall(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_quantifier_forall(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Determine if ast is an existential quantifier.
-    pub fn Z3_is_quantifier_exists(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_quantifier_exists(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Determine if ast is a lambda expression.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_is_lambda(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_lambda(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Obtain weight of quantifier.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_get_quantifier_weight(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_quantifier_weight(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Return number of patterns used in quantifier.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_get_quantifier_num_patterns(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_quantifier_num_patterns(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Return i'th pattern.
     ///
@@ -4331,17 +4212,17 @@ extern "C" {
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
     pub fn Z3_get_quantifier_pattern_ast(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_pattern;
+    ) -> *mut Z3_pattern;
 
     /// Return number of `no_patterns` used in quantifier.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_get_quantifier_num_no_patterns(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_quantifier_num_no_patterns(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Return i'th `no_pattern`.
     ///
@@ -4349,17 +4230,17 @@ extern "C" {
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
     pub fn Z3_get_quantifier_no_pattern_ast(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Return number of bound variables of quantifier.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_get_quantifier_num_bound(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_quantifier_num_bound(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_uint;
 
     /// Return symbol of the i'th bound variable.
     ///
@@ -4367,10 +4248,10 @@ extern "C" {
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
     pub fn Z3_get_quantifier_bound_name(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_symbol;
+    ) -> *mut Z3_symbol;
 
     /// Return sort of the i'th bound variable.
     ///
@@ -4378,17 +4259,17 @@ extern "C" {
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
     pub fn Z3_get_quantifier_bound_sort(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Return body of quantifier.
     ///
     /// # Preconditions:
     ///
     /// - `Z3_get_ast_kind(a) == AstKind::Quantifier`
-    pub fn Z3_get_quantifier_body(c: Z3_context, a: Z3_ast) -> Z3_ast;
+    pub fn Z3_get_quantifier_body(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Interface to simplifier.
     ///
@@ -4400,7 +4281,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_simplify_ex`]
-    pub fn Z3_simplify(c: Z3_context, a: Z3_ast) -> Z3_ast;
+    pub fn Z3_simplify(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Interface to simplifier.
     ///
@@ -4414,7 +4295,7 @@ extern "C" {
     /// - [`Z3_simplify`]
     /// - [`Z3_simplify_get_help`]
     /// - [`Z3_simplify_get_param_descrs`]
-    pub fn Z3_simplify_ex(c: Z3_context, a: Z3_ast, p: Z3_params) -> Z3_ast;
+    pub fn Z3_simplify_ex(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, p: NonNull<Z3_params>) -> *mut Z3_ast;
 
     /// Return a string describing all available parameters.
     ///
@@ -4422,7 +4303,7 @@ extern "C" {
     ///
     /// - [`Z3_simplify_ex`]
     /// - [`Z3_simplify_get_param_descrs`]
-    pub fn Z3_simplify_get_help(c: Z3_context) -> Z3_string;
+    pub fn Z3_simplify_get_help(c: NonNull<Z3_context>) -> Z3_string;
 
     /// Return the parameter description set for the simplify procedure.
     ///
@@ -4430,7 +4311,7 @@ extern "C" {
     ///
     /// - [`Z3_simplify_ex`]
     /// - [`Z3_simplify_get_help`]
-    pub fn Z3_simplify_get_param_descrs(c: Z3_context) -> Z3_param_descrs;
+    pub fn Z3_simplify_get_param_descrs(c: NonNull<Z3_context>) -> *mut Z3_param_descrs;
 
     /// Update the arguments of term `a` using the arguments `args`.
     ///
@@ -4439,11 +4320,11 @@ extern "C" {
     ///
     /// If `a` is a quantifier, then `num_args` has to be 1.
     pub fn Z3_update_term(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         num_args: ::std::os::raw::c_uint,
         args: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Substitute every occurrence of `from[i]` in `a` with `to[i]`, for `i`
     /// smaller than `num_exprs`.
@@ -4454,23 +4335,23 @@ extern "C" {
     /// For every `i` smaller than `num_exprs`, we must have that sort of
     /// `from[i]` must be equal to sort of `to[i]`.
     pub fn Z3_substitute(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         num_exprs: ::std::os::raw::c_uint,
         from: *const Z3_ast,
         to: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Substitute the free variables in `a` with the expressions in `to`.
     ///
     /// For every `i` smaller than `num_exprs`, the variable with de-Bruijn
     /// index `i` is replaced with term `to[i]`.
     pub fn Z3_substitute_vars(
-        c: Z3_context,
-        a: Z3_ast,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_ast>,
         num_exprs: ::std::os::raw::c_uint,
         to: *const Z3_ast,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Translate/Copy the AST `a` from context `source` to context `target`.
     ///
@@ -4479,16 +4360,16 @@ extern "C" {
     /// # Preconditions:
     ///
     /// - `source != target`
-    pub fn Z3_translate(source: Z3_context, a: Z3_ast, target: Z3_context) -> Z3_ast;
+    pub fn Z3_translate(source: NonNull<Z3_context>, a: NonNull<Z3_ast>, target: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a fresh model object. It has reference count 0.
-    pub fn Z3_mk_model(c: Z3_context) -> Z3_model;
+    pub fn Z3_mk_model(c: NonNull<Z3_context>) -> *mut Z3_model;
 
     /// Increment the reference counter of the given model.
-    pub fn Z3_model_inc_ref(c: Z3_context, m: Z3_model);
+    pub fn Z3_model_inc_ref(c: NonNull<Z3_context>, m: NonNull<Z3_model>);
 
     /// Decrement the reference counter of the given model.
-    pub fn Z3_model_dec_ref(c: Z3_context, m: Z3_model);
+    pub fn Z3_model_dec_ref(c: NonNull<Z3_context>, m: NonNull<Z3_model>);
 
     /// Evaluate the AST node `t` in the given model.
     /// Return `true` if succeeded, and store the result in `v`.
@@ -4512,9 +4393,9 @@ extern "C" {
     /// - `t` is type incorrect.
     /// - [`Z3_interrupt`] was invoked during evaluation.
     pub fn Z3_model_eval(
-        c: Z3_context,
-        m: Z3_model,
-        t: Z3_ast,
+        c: NonNull<Z3_context>,
+        m: NonNull<Z3_model>,
+        t: NonNull<Z3_ast>,
         model_completion: bool,
         v: *mut Z3_ast,
     ) -> bool;
@@ -4527,10 +4408,10 @@ extern "C" {
     /// # Preconditions:
     ///
     /// - `Z3_get_arity(c, a) == 0`
-    pub fn Z3_model_get_const_interp(c: Z3_context, m: Z3_model, a: Z3_func_decl) -> Z3_ast;
+    pub fn Z3_model_get_const_interp(c: NonNull<Z3_context>, m: NonNull<Z3_model>, a: NonNull<Z3_func_decl>) -> *mut Z3_ast;
 
     /// Test if there exists an interpretation (i.e., assignment) for `a` in the model `m`.
-    pub fn Z3_model_has_interp(c: Z3_context, m: Z3_model, a: Z3_func_decl) -> bool;
+    pub fn Z3_model_has_interp(c: NonNull<Z3_context>, m: NonNull<Z3_model>, a: NonNull<Z3_func_decl>) -> bool;
 
     /// Return the interpretation of the function `f` in the model `m`.
     ///
@@ -4544,14 +4425,14 @@ extern "C" {
     /// NOTE: Reference counting must be used to manage [`Z3_func_interp`]
     /// objects, even when the `Z3_context` was created using
     /// [`Z3_mk_context`] instead of [`Z3_mk_context_rc`].
-    pub fn Z3_model_get_func_interp(c: Z3_context, m: Z3_model, f: Z3_func_decl) -> Z3_func_interp;
+    pub fn Z3_model_get_func_interp(c: NonNull<Z3_context>, m: NonNull<Z3_model>, f: NonNull<Z3_func_decl>) -> *mut Z3_func_interp;
 
     /// Return the number of constants assigned by the given model.
     ///
     /// # See also:
     ///
     /// - [`Z3_model_get_const_decl`]
-    pub fn Z3_model_get_num_consts(c: Z3_context, m: Z3_model) -> ::std::os::raw::c_uint;
+    pub fn Z3_model_get_num_consts(c: NonNull<Z3_context>, m: NonNull<Z3_model>) -> ::std::os::raw::c_uint;
 
     /// Return the i-th constant in the given model.
     ///
@@ -4564,10 +4445,10 @@ extern "C" {
     /// - [`Z3_model_eval`]
     /// - [`Z3_model_get_num_consts`]
     pub fn Z3_model_get_const_decl(
-        c: Z3_context,
-        m: Z3_model,
+        c: NonNull<Z3_context>,
+        m: NonNull<Z3_model>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Return the number of function interpretations in the given model.
     ///
@@ -4577,7 +4458,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_model_get_func_decl`]
-    pub fn Z3_model_get_num_funcs(c: Z3_context, m: Z3_model) -> ::std::os::raw::c_uint;
+    pub fn Z3_model_get_num_funcs(c: NonNull<Z3_context>, m: NonNull<Z3_model>) -> ::std::os::raw::c_uint;
 
     /// Return the declaration of the i-th function in the given model.
     ///
@@ -4589,10 +4470,10 @@ extern "C" {
     ///
     /// - [`Z3_model_get_num_funcs`]
     pub fn Z3_model_get_func_decl(
-        c: Z3_context,
-        m: Z3_model,
+        c: NonNull<Z3_context>,
+        m: NonNull<Z3_model>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_func_decl;
+    ) -> *mut Z3_func_decl;
 
     /// Return the number of uninterpreted sorts that `m` assigns an
     /// interpretation to.
@@ -4605,7 +4486,7 @@ extern "C" {
     ///
     /// - [`Z3_model_get_sort`]
     /// - [`Z3_model_get_sort_universe`]
-    pub fn Z3_model_get_num_sorts(c: Z3_context, m: Z3_model) -> ::std::os::raw::c_uint;
+    pub fn Z3_model_get_num_sorts(c: NonNull<Z3_context>, m: NonNull<Z3_model>) -> ::std::os::raw::c_uint;
 
     /// Return an uninterpreted sort that `m` assigns an interpretation.
     ///
@@ -4617,7 +4498,7 @@ extern "C" {
     ///
     /// - [`Z3_model_get_num_sorts`]
     /// - [`Z3_model_get_sort_universe`]
-    pub fn Z3_model_get_sort(c: Z3_context, m: Z3_model, i: ::std::os::raw::c_uint) -> Z3_sort;
+    pub fn Z3_model_get_sort(c: NonNull<Z3_context>, m: NonNull<Z3_model>, i: ::std::os::raw::c_uint) -> *mut Z3_sort;
 
     /// Return the finite set of distinct values that represent the interpretation for sort `s`.
     ///
@@ -4625,10 +4506,10 @@ extern "C" {
     ///
     /// - [`Z3_model_get_num_sorts`]
     /// - [`Z3_model_get_sort`]
-    pub fn Z3_model_get_sort_universe(c: Z3_context, m: Z3_model, s: Z3_sort) -> Z3_ast_vector;
+    pub fn Z3_model_get_sort_universe(c: NonNull<Z3_context>, m: NonNull<Z3_model>, s: NonNull<Z3_sort>) -> *mut Z3_ast_vector;
 
     /// Translate model from context `c` to context `dst`.
-    pub fn Z3_model_translate(c: Z3_context, m: Z3_model, dst: Z3_context) -> Z3_model;
+    pub fn Z3_model_translate(c: NonNull<Z3_context>, m: NonNull<Z3_model>, dst: NonNull<Z3_context>) -> *mut Z3_model;
 
     /// The `(_ as-array f)` AST node is a construct for assigning interpretations
     /// for arrays in Z3.
@@ -4642,14 +4523,14 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_as_array_func_decl`]
-    pub fn Z3_is_as_array(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_is_as_array(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Return the function declaration `f` associated with a `(_ as_array f)` node.
     ///
     /// # See also:
     ///
     /// - [`Z3_is_as_array`]
-    pub fn Z3_get_as_array_func_decl(c: Z3_context, a: Z3_ast) -> Z3_func_decl;
+    pub fn Z3_get_as_array_func_decl(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> *mut Z3_func_decl;
 
     /// Create a fresh `func_interp` object, add it to a model for a specified function.
     /// It has reference count 0.
@@ -4659,20 +4540,20 @@ extern "C" {
     /// - `f`: function declaration
     /// - `default_value`: default value for function interpretation
     pub fn Z3_add_func_interp(
-        c: Z3_context,
-        m: Z3_model,
-        f: Z3_func_decl,
-        default_value: Z3_ast,
-    ) -> Z3_func_interp;
+        c: NonNull<Z3_context>,
+        m: NonNull<Z3_model>,
+        f: NonNull<Z3_func_decl>,
+        default_value: NonNull<Z3_ast>,
+    ) -> *mut Z3_func_interp;
 
     /// Add a constant interpretation.
-    pub fn Z3_add_const_interp(c: Z3_context, m: Z3_model, f: Z3_func_decl, a: Z3_ast);
+    pub fn Z3_add_const_interp(c: NonNull<Z3_context>, m: NonNull<Z3_model>, f: NonNull<Z3_func_decl>, a: NonNull<Z3_ast>);
 
     /// Increment the reference counter of the given `Z3_func_interp` object.
-    pub fn Z3_func_interp_inc_ref(c: Z3_context, f: Z3_func_interp);
+    pub fn Z3_func_interp_inc_ref(c: NonNull<Z3_context>, f: NonNull<Z3_func_interp>);
 
     /// Decrement the reference counter of the given `Z3_func_interp` object.
-    pub fn Z3_func_interp_dec_ref(c: Z3_context, f: Z3_func_interp);
+    pub fn Z3_func_interp_dec_ref(c: NonNull<Z3_context>, f: NonNull<Z3_func_interp>);
 
     /// Return the number of entries in the given function interpretation.
     ///
@@ -4685,8 +4566,8 @@ extern "C" {
     ///
     /// - [`Z3_func_interp_get_entry`]
     pub fn Z3_func_interp_get_num_entries(
-        c: Z3_context,
-        f: Z3_func_interp,
+        c: NonNull<Z3_context>,
+        f: NonNull<Z3_func_interp>,
     ) -> ::std::os::raw::c_uint;
 
     /// Return a "point" of the given function interpretation. It represents
@@ -4700,25 +4581,25 @@ extern "C" {
     ///
     /// - [`Z3_func_interp_get_num_entries`]
     pub fn Z3_func_interp_get_entry(
-        c: Z3_context,
-        f: Z3_func_interp,
+        c: NonNull<Z3_context>,
+        f: NonNull<Z3_func_interp>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_func_entry;
+    ) -> *mut Z3_func_entry;
 
     /// Return the 'else' value of the given function interpretation.
     ///
     /// A function interpretation is represented as a finite map and an 'else' value.
     /// This procedure returns the 'else' value.
-    pub fn Z3_func_interp_get_else(c: Z3_context, f: Z3_func_interp) -> Z3_ast;
+    pub fn Z3_func_interp_get_else(c: NonNull<Z3_context>, f: NonNull<Z3_func_interp>) -> *mut Z3_ast;
 
     /// Set the 'else' value of the given function interpretation.
     ///
     /// A function interpretation is represented as a finite map and an 'else' value.
     /// This procedure can be used to update the 'else' value.
-    pub fn Z3_func_interp_set_else(c: Z3_context, f: Z3_func_interp, else_value: Z3_ast);
+    pub fn Z3_func_interp_set_else(c: NonNull<Z3_context>, f: NonNull<Z3_func_interp>, else_value: NonNull<Z3_ast>);
 
     /// Return the arity (number of arguments) of the given function interpretation.
-    pub fn Z3_func_interp_get_arity(c: Z3_context, f: Z3_func_interp) -> ::std::os::raw::c_uint;
+    pub fn Z3_func_interp_get_arity(c: NonNull<Z3_context>, f: NonNull<Z3_func_interp>) -> ::std::os::raw::c_uint;
 
     /// add a function entry to a function interpretation.
     ///
@@ -4734,17 +4615,17 @@ extern "C" {
     /// only the second insertion survives and the first inserted entry
     /// is removed.
     pub fn Z3_func_interp_add_entry(
-        c: Z3_context,
-        fi: Z3_func_interp,
-        args: Z3_ast_vector,
-        value: Z3_ast,
+        c: NonNull<Z3_context>,
+        fi: NonNull<Z3_func_interp>,
+        args: NonNull<Z3_ast_vector>,
+        value: NonNull<Z3_ast>,
     );
 
     /// Increment the reference counter of the given `Z3_func_entry` object.
-    pub fn Z3_func_entry_inc_ref(c: Z3_context, e: Z3_func_entry);
+    pub fn Z3_func_entry_inc_ref(c: NonNull<Z3_context>, e: NonNull<Z3_func_entry>);
 
     /// Decrement the reference counter of the given `Z3_func_entry` object.
-    pub fn Z3_func_entry_dec_ref(c: Z3_context, e: Z3_func_entry);
+    pub fn Z3_func_entry_dec_ref(c: NonNull<Z3_context>, e: NonNull<Z3_func_entry>);
 
     /// Return the value of this point.
     ///
@@ -4754,7 +4635,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_func_interp_get_entry`]
-    pub fn Z3_func_entry_get_value(c: Z3_context, e: Z3_func_entry) -> Z3_ast;
+    pub fn Z3_func_entry_get_value(c: NonNull<Z3_context>, e: NonNull<Z3_func_entry>) -> *mut Z3_ast;
 
     /// Return the number of arguments in a `Z3_func_entry` object.
     ///
@@ -4762,7 +4643,7 @@ extern "C" {
     ///
     /// - [`Z3_func_entry_get_arg`]
     /// - [`Z3_func_interp_get_entry`]
-    pub fn Z3_func_entry_get_num_args(c: Z3_context, e: Z3_func_entry) -> ::std::os::raw::c_uint;
+    pub fn Z3_func_entry_get_num_args(c: NonNull<Z3_context>, e: NonNull<Z3_func_entry>) -> ::std::os::raw::c_uint;
 
     /// Return an argument of a `Z3_func_entry` object.
     ///
@@ -4775,10 +4656,10 @@ extern "C" {
     /// - [`Z3_func_entry_get_num_args`]
     /// - [`Z3_func_interp_get_entry`]
     pub fn Z3_func_entry_get_arg(
-        c: Z3_context,
-        e: Z3_func_entry,
+        c: NonNull<Z3_context>,
+        e: NonNull<Z3_func_entry>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Log interaction to a file.
     ///
@@ -4786,7 +4667,7 @@ extern "C" {
     ///
     /// - [`Z3_append_log`]
     /// - [`Z3_close_log`]
-    pub fn Z3_open_log(filename: Z3_string) -> bool;
+    pub fn Z3_open_log(filename: NonNull<Z3_string>) -> bool;
 
     /// Append user-defined string to interaction log.
     ///
@@ -4798,7 +4679,7 @@ extern "C" {
     ///
     /// - [`Z3_open_log`]
     /// - [`Z3_close_log`]
-    pub fn Z3_append_log(string: Z3_string);
+    pub fn Z3_append_log(string: NonNull<Z3_string>);
 
     /// Close interaction log.
     ///
@@ -4832,7 +4713,7 @@ extern "C" {
     /// - [`Z3_ast_to_string`]
     /// - [`Z3_pattern_to_string`]
     /// - [`Z3_func_decl_to_string`]
-    pub fn Z3_set_ast_print_mode(c: Z3_context, mode: AstPrintMode);
+    pub fn Z3_set_ast_print_mode(c: NonNull<Z3_context>, mode: AstPrintMode);
 
     /// Convert the given AST node into a string.
     ///
@@ -4847,7 +4728,7 @@ extern "C" {
     /// - [`Z3_func_decl_to_string`]
     /// - [`Z3_pattern_to_string`]
     /// - [`Z3_sort_to_string`]
-    pub fn Z3_ast_to_string(c: Z3_context, a: Z3_ast) -> Z3_string;
+    pub fn Z3_ast_to_string(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> Z3_string;
 
     /// Convert the given pattern AST node into a string.
     ///
@@ -4864,7 +4745,7 @@ extern "C" {
     /// - [`Z3_ast_to_string`]
     /// - [`Z3_func_decl_to_string`]
     /// - [`Z3_sort_to_string`]
-    pub fn Z3_pattern_to_string(c: Z3_context, p: Z3_pattern) -> Z3_string;
+    pub fn Z3_pattern_to_string(c: NonNull<Z3_context>, p: NonNull<Z3_pattern>) -> Z3_string;
 
     /// Convert the given sort AST node into a string.
     ///
@@ -4881,7 +4762,7 @@ extern "C" {
     /// - [`Z3_ast_to_string`]
     /// - [`Z3_func_decl_to_string`]
     /// - [`Z3_pattern_to_string`]
-    pub fn Z3_sort_to_string(c: Z3_context, s: Z3_sort) -> Z3_string;
+    pub fn Z3_sort_to_string(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> Z3_string;
 
     /// Convert the given func decl AST node into a string.
     ///
@@ -4898,7 +4779,7 @@ extern "C" {
     /// - [`Z3_ast_to_string`]
     /// - [`Z3_pattern_to_string`]
     /// - [`Z3_sort_to_string`]
-    pub fn Z3_func_decl_to_string(c: Z3_context, d: Z3_func_decl) -> Z3_string;
+    pub fn Z3_func_decl_to_string(c: NonNull<Z3_context>, d: NonNull<Z3_func_decl>) -> Z3_string;
 
     /// Convert the given model into a string.
     ///
@@ -4906,7 +4787,7 @@ extern "C" {
     /// It will be automatically deallocated when
     /// [`Z3_del_context`] is invoked.
     /// So, the buffer is invalidated in the next call to `Z3_model_to_string`.
-    pub fn Z3_model_to_string(c: Z3_context, m: Z3_model) -> Z3_string;
+    pub fn Z3_model_to_string(c: NonNull<Z3_context>, m: NonNull<Z3_model>) -> Z3_string;
 
     /// Convert the given benchmark into SMT-LIB formatted string.
     ///
@@ -4925,14 +4806,14 @@ extern "C" {
     /// - `assumptions`: - auxiliary assumptions.
     /// - `formula`: - formula to be checked for consistency in conjunction with assumptions.
     pub fn Z3_benchmark_to_smtlib_string(
-        c: Z3_context,
-        name: Z3_string,
-        logic: Z3_string,
-        status: Z3_string,
-        attributes: Z3_string,
+        c: NonNull<Z3_context>,
+        name: NonNull<Z3_string>,
+        logic: NonNull<Z3_string>,
+        status: NonNull<Z3_string>,
+        attributes: NonNull<Z3_string>,
         num_assumptions: ::std::os::raw::c_uint,
         assumptions: *const Z3_ast,
-        formula: Z3_ast,
+        formula: NonNull<Z3_ast>,
     ) -> Z3_string;
 
     /// Parse the given string using the SMT-LIB2 parser.
@@ -4940,33 +4821,33 @@ extern "C" {
     /// It returns a formula comprising of the conjunction of assertions
     /// in the scope (up to push/pop) at the end of the string.
     pub fn Z3_parse_smtlib2_string(
-        c: Z3_context,
-        str: Z3_string,
+        c: NonNull<Z3_context>,
+        str: NonNull<Z3_string>,
         num_sorts: ::std::os::raw::c_uint,
         sort_names: *const Z3_symbol,
         sorts: *const Z3_sort,
         num_decls: ::std::os::raw::c_uint,
         decl_names: *const Z3_symbol,
         decls: *const Z3_func_decl,
-    ) -> Z3_ast_vector;
+    ) -> *mut Z3_ast_vector;
 
     /// Similar to [`Z3_parse_smtlib2_string`], but reads the benchmark from a file.
     pub fn Z3_parse_smtlib2_file(
-        c: Z3_context,
-        file_name: Z3_string,
+        c: NonNull<Z3_context>,
+        file_name: NonNull<Z3_string>,
         num_sorts: ::std::os::raw::c_uint,
         sort_names: *const Z3_symbol,
         sorts: *const Z3_sort,
         num_decls: ::std::os::raw::c_uint,
         decl_names: *const Z3_symbol,
         decls: *const Z3_func_decl,
-    ) -> Z3_ast_vector;
+    ) -> *mut Z3_ast_vector;
 
     /// Parse and evaluate and SMT-LIB2 command sequence. The state from a previous
     /// call is saved so the next evaluation builds on top of the previous call.
     ///
     /// Returns output generated from processing commands.
-    pub fn Z3_eval_smtlib2_string(arg1: Z3_context, str: Z3_string) -> Z3_string;
+    pub fn Z3_eval_smtlib2_string(arg1: NonNull<Z3_context>, str: NonNull<Z3_string>) -> Z3_string;
 
     /// Return the error code for the last API call.
     ///
@@ -4976,7 +4857,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_set_error_handler`]
-    pub fn Z3_get_error_code(c: Z3_context) -> ErrorCode;
+    pub fn Z3_get_error_code(c: NonNull<Z3_context>) -> ErrorCode;
 
     /// Register a Z3 error handler.
     ///
@@ -4991,13 +4872,13 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_error_code`]
-    pub fn Z3_set_error_handler(c: Z3_context, h: Z3_error_handler);
+    pub fn Z3_set_error_handler(c: NonNull<Z3_context>, h: NonNull<Z3_error_handler>);
 
     /// Set an error.
-    pub fn Z3_set_error(c: Z3_context, e: ErrorCode);
+    pub fn Z3_set_error(c: NonNull<Z3_context>, e: ErrorCode);
 
     /// Return a string describing the given error code.
-    pub fn Z3_get_error_msg(c: Z3_context, err: ErrorCode) -> Z3_string;
+    pub fn Z3_get_error_msg(c: NonNull<Z3_context>, err: ErrorCode) -> Z3_string;
 
     /// Return Z3 version number information.
     ///
@@ -5024,7 +4905,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_disable_trace`]
-    pub fn Z3_enable_trace(tag: Z3_string);
+    pub fn Z3_enable_trace(tag: NonNull<Z3_string>);
 
     /// Disable tracing messages tagged as `tag` when Z3 is compiled in debug mode.
     /// It is a NOOP otherwise
@@ -5032,7 +4913,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_enable_trace`]
-    pub fn Z3_disable_trace(tag: Z3_string);
+    pub fn Z3_disable_trace(tag: NonNull<Z3_string>);
 
     /// Reset all allocated resources.
     ///
@@ -5067,18 +4948,18 @@ extern "C" {
     /// NOTE: Reference counting must be used to manage goals, even
     /// when the [`Z3_context`] was created using
     /// [`Z3_mk_context`] instead of [`Z3_mk_context_rc`].
-    pub fn Z3_mk_goal(c: Z3_context, models: bool, unsat_cores: bool, proofs: bool) -> Z3_goal;
+    pub fn Z3_mk_goal(c: NonNull<Z3_context>, models: bool, unsat_cores: bool, proofs: bool) -> *mut Z3_goal;
 
     /// Increment the reference counter of the given goal.
-    pub fn Z3_goal_inc_ref(c: Z3_context, g: Z3_goal);
+    pub fn Z3_goal_inc_ref(c: NonNull<Z3_context>, g: NonNull<Z3_goal>);
 
     /// Decrement the reference counter of the given goal.
-    pub fn Z3_goal_dec_ref(c: Z3_context, g: Z3_goal);
+    pub fn Z3_goal_dec_ref(c: NonNull<Z3_context>, g: NonNull<Z3_goal>);
 
     /// Return the "precision" of the given goal. Goals can be transformed using over and under approximations.
     /// A under approximation is applied when the objective is to find a model for a given goal.
     /// An over approximation is applied when the objective is to find a proof for a given goal.
-    pub fn Z3_goal_precision(c: Z3_context, g: Z3_goal) -> GoalPrec;
+    pub fn Z3_goal_precision(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> GoalPrec;
 
     /// Add a new formula `a` to the given goal.
     ///
@@ -5095,46 +4976,46 @@ extern "C" {
     ///
     /// If the formula `a` is `false`, then the entire goal is
     /// replaced by the formula `false`.
-    pub fn Z3_goal_assert(c: Z3_context, g: Z3_goal, a: Z3_ast);
+    pub fn Z3_goal_assert(c: NonNull<Z3_context>, g: NonNull<Z3_goal>, a: NonNull<Z3_ast>);
 
     /// Return true if the given goal contains the formula `false`.
-    pub fn Z3_goal_inconsistent(c: Z3_context, g: Z3_goal) -> bool;
+    pub fn Z3_goal_inconsistent(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> bool;
 
     /// Return the depth of the given goal. It tracks how many transformations were applied to it.
-    pub fn Z3_goal_depth(c: Z3_context, g: Z3_goal) -> ::std::os::raw::c_uint;
+    pub fn Z3_goal_depth(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> ::std::os::raw::c_uint;
 
     /// Erase all formulas from the given goal.
-    pub fn Z3_goal_reset(c: Z3_context, g: Z3_goal);
+    pub fn Z3_goal_reset(c: NonNull<Z3_context>, g: NonNull<Z3_goal>);
 
     /// Return the number of formulas in the given goal.
-    pub fn Z3_goal_size(c: Z3_context, g: Z3_goal) -> ::std::os::raw::c_uint;
+    pub fn Z3_goal_size(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> ::std::os::raw::c_uint;
 
     /// Return a formula from the given goal.
     ///
     /// # Preconditions:
     ///
     /// - `idx < Z3_goal_size(c, g)`
-    pub fn Z3_goal_formula(c: Z3_context, g: Z3_goal, idx: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_goal_formula(c: NonNull<Z3_context>, g: NonNull<Z3_goal>, idx: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Return the number of formulas, subformulas and terms in the given goal.
-    pub fn Z3_goal_num_exprs(c: Z3_context, g: Z3_goal) -> ::std::os::raw::c_uint;
+    pub fn Z3_goal_num_exprs(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> ::std::os::raw::c_uint;
 
     /// Return true if the goal is empty, and it is precise or the product of a under approximation.
-    pub fn Z3_goal_is_decided_sat(c: Z3_context, g: Z3_goal) -> bool;
+    pub fn Z3_goal_is_decided_sat(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> bool;
 
     /// Return true if the goal contains false, and it is precise or the product of an over approximation.
-    pub fn Z3_goal_is_decided_unsat(c: Z3_context, g: Z3_goal) -> bool;
+    pub fn Z3_goal_is_decided_unsat(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> bool;
 
     /// Copy a goal `g` from the context `source` to the context `target`.
-    pub fn Z3_goal_translate(source: Z3_context, g: Z3_goal, target: Z3_context) -> Z3_goal;
+    pub fn Z3_goal_translate(source: NonNull<Z3_context>, g: NonNull<Z3_goal>, target: NonNull<Z3_context>) -> *mut Z3_goal;
 
     /// Convert a model of the formulas of a goal to a model of an original goal.
     /// The model may be null, in which case the returned model is valid if the goal was
     /// established satisfiable.
-    pub fn Z3_goal_convert_model(c: Z3_context, g: Z3_goal, m: Z3_model) -> Z3_model;
+    pub fn Z3_goal_convert_model(c: NonNull<Z3_context>, g: NonNull<Z3_goal>, m: NonNull<Z3_model>) -> *mut Z3_model;
 
     /// Convert a goal into a string.
-    pub fn Z3_goal_to_string(c: Z3_context, g: Z3_goal) -> Z3_string;
+    pub fn Z3_goal_to_string(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> Z3_string;
 
     /// Convert a goal into a DIMACS formatted string.
     /// The goal must be in CNF. You can convert a goal to CNF
@@ -5142,7 +5023,7 @@ extern "C" {
     /// converted to Booleans either, so the if caller intends to
     /// preserve satisfiability, it should apply bit-blasting tactics.
     /// Quantifiers and theory atoms will not be encoded.
-    pub fn Z3_goal_to_dimacs_string(c: Z3_context, g: Z3_goal) -> Z3_string;
+    pub fn Z3_goal_to_dimacs_string(c: NonNull<Z3_context>, g: NonNull<Z3_goal>) -> Z3_string;
 
     /// Return a tactic associated with the given name.
     ///
@@ -5150,13 +5031,13 @@ extern "C" {
     /// It may also be obtained using the command `(help-tactic)` in the SMT 2.0 front-end.
     ///
     /// Tactics are the basic building block for creating custom solvers for specific problem domains.
-    pub fn Z3_mk_tactic(c: Z3_context, name: Z3_string) -> Z3_tactic;
+    pub fn Z3_mk_tactic(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> *mut Z3_tactic;
 
     /// Increment the reference counter of the given tactic.
-    pub fn Z3_tactic_inc_ref(c: Z3_context, t: Z3_tactic);
+    pub fn Z3_tactic_inc_ref(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>);
 
     /// Decrement the reference counter of the given tactic.
-    pub fn Z3_tactic_dec_ref(c: Z3_context, g: Z3_tactic);
+    pub fn Z3_tactic_dec_ref(c: NonNull<Z3_context>, g: NonNull<Z3_tactic>);
 
     /// Return a probe associated with the given name.
     /// The complete list of probes may be obtained using the procedures [`Z3_get_num_probes`] and [`Z3_get_probe_name`].
@@ -5164,114 +5045,114 @@ extern "C" {
     ///
     /// Probes are used to inspect a goal (aka problem) and collect information that may be used to decide
     /// which solver and/or preprocessing step will be used.
-    pub fn Z3_mk_probe(c: Z3_context, name: Z3_string) -> Z3_probe;
+    pub fn Z3_mk_probe(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> *mut Z3_probe;
 
     /// Increment the reference counter of the given probe.
-    pub fn Z3_probe_inc_ref(c: Z3_context, p: Z3_probe);
+    pub fn Z3_probe_inc_ref(c: NonNull<Z3_context>, p: NonNull<Z3_probe>);
 
     /// Decrement the reference counter of the given probe.
-    pub fn Z3_probe_dec_ref(c: Z3_context, p: Z3_probe);
+    pub fn Z3_probe_dec_ref(c: NonNull<Z3_context>, p: NonNull<Z3_probe>);
 
     /// Return a tactic that applies `t1` to a given goal and `t2`
     /// to every subgoal produced by `t1`.
-    pub fn Z3_tactic_and_then(c: Z3_context, t1: Z3_tactic, t2: Z3_tactic) -> Z3_tactic;
+    pub fn Z3_tactic_and_then(c: NonNull<Z3_context>, t1: NonNull<Z3_tactic>, t2: NonNull<Z3_tactic>) -> *mut Z3_tactic;
 
     /// Return a tactic that first applies `t1` to a given goal,
     /// if it fails then returns the result of `t2` applied to the given goal.
-    pub fn Z3_tactic_or_else(c: Z3_context, t1: Z3_tactic, t2: Z3_tactic) -> Z3_tactic;
+    pub fn Z3_tactic_or_else(c: NonNull<Z3_context>, t1: NonNull<Z3_tactic>, t2: NonNull<Z3_tactic>) -> *mut Z3_tactic;
 
     /// Return a tactic that applies the given tactics in parallel.
     pub fn Z3_tactic_par_or(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         num: ::std::os::raw::c_uint,
         ts: *const Z3_tactic,
-    ) -> Z3_tactic;
+    ) -> *mut Z3_tactic;
 
     /// Return a tactic that applies `t1` to a given goal and then `t2`
     /// to every subgoal produced by `t1`. The subgoals are processed in parallel.
-    pub fn Z3_tactic_par_and_then(c: Z3_context, t1: Z3_tactic, t2: Z3_tactic) -> Z3_tactic;
+    pub fn Z3_tactic_par_and_then(c: NonNull<Z3_context>, t1: NonNull<Z3_tactic>, t2: NonNull<Z3_tactic>) -> *mut Z3_tactic;
 
     /// Return a tactic that applies `t` to a given goal for `ms` milliseconds.
     /// If `t` does not terminate in `ms` milliseconds, then it fails.
-    pub fn Z3_tactic_try_for(c: Z3_context, t: Z3_tactic, ms: ::std::os::raw::c_uint) -> Z3_tactic;
+    pub fn Z3_tactic_try_for(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>, ms: ::std::os::raw::c_uint) -> *mut Z3_tactic;
 
     /// Return a tactic that applies `t` to a given goal is the probe `p` evaluates to true.
     /// If `p` evaluates to false, then the new tactic behaves like the skip tactic.
-    pub fn Z3_tactic_when(c: Z3_context, p: Z3_probe, t: Z3_tactic) -> Z3_tactic;
+    pub fn Z3_tactic_when(c: NonNull<Z3_context>, p: NonNull<Z3_probe>, t: NonNull<Z3_tactic>) -> *mut Z3_tactic;
 
     /// Return a tactic that applies `t1` to a given goal if the probe `p` evaluates to true,
     /// and `t2` if `p` evaluates to false.
-    pub fn Z3_tactic_cond(c: Z3_context, p: Z3_probe, t1: Z3_tactic, t2: Z3_tactic) -> Z3_tactic;
+    pub fn Z3_tactic_cond(c: NonNull<Z3_context>, p: NonNull<Z3_probe>, t1: NonNull<Z3_tactic>, t2: NonNull<Z3_tactic>) -> *mut Z3_tactic;
 
     /// Return a tactic that keeps applying `t` until the goal is not modified anymore or the maximum
     /// number of iterations `max` is reached.
-    pub fn Z3_tactic_repeat(c: Z3_context, t: Z3_tactic, max: ::std::os::raw::c_uint) -> Z3_tactic;
+    pub fn Z3_tactic_repeat(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>, max: ::std::os::raw::c_uint) -> *mut Z3_tactic;
 
     /// Return a tactic that just return the given goal.
-    pub fn Z3_tactic_skip(c: Z3_context) -> Z3_tactic;
+    pub fn Z3_tactic_skip(c: NonNull<Z3_context>) -> *mut Z3_tactic;
 
     /// Return a tactic that always fails.
-    pub fn Z3_tactic_fail(c: Z3_context) -> Z3_tactic;
+    pub fn Z3_tactic_fail(c: NonNull<Z3_context>) -> *mut Z3_tactic;
 
     /// Return a tactic that fails if the probe `p` evaluates to false.
-    pub fn Z3_tactic_fail_if(c: Z3_context, p: Z3_probe) -> Z3_tactic;
+    pub fn Z3_tactic_fail_if(c: NonNull<Z3_context>, p: NonNull<Z3_probe>) -> *mut Z3_tactic;
 
     /// Return a tactic that fails if the goal is not trivially satisfiable (i.e., empty) or
     /// trivially unsatisfiable (i.e., contains false).
-    pub fn Z3_tactic_fail_if_not_decided(c: Z3_context) -> Z3_tactic;
+    pub fn Z3_tactic_fail_if_not_decided(c: NonNull<Z3_context>) -> *mut Z3_tactic;
 
     /// Return a tactic that applies `t` using the given set of parameters.
-    pub fn Z3_tactic_using_params(c: Z3_context, t: Z3_tactic, p: Z3_params) -> Z3_tactic;
+    pub fn Z3_tactic_using_params(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>, p: NonNull<Z3_params>) -> *mut Z3_tactic;
 
     /// Return a probe that always evaluates to val.
-    pub fn Z3_probe_const(x: Z3_context, val: f64) -> Z3_probe;
+    pub fn Z3_probe_const(x: NonNull<Z3_context>, val: f64) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when the value returned by `p1` is less than the value returned by `p2`.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_lt(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_lt(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when the value returned by `p1` is greater than the value returned by `p2`.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_gt(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_gt(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when the value returned by `p1` is less than or equal to the value returned by `p2`.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_le(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_le(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when the value returned by `p1` is greater than or equal to the value returned by `p2`.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_ge(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_ge(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when the value returned by `p1` is equal to the value returned by `p2`.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_eq(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_eq(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when `p1` and `p2` evaluates to true.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_and(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_and(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when `p1` or `p2` evaluates to true.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_or(x: Z3_context, p1: Z3_probe, p2: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_or(x: NonNull<Z3_context>, p1: NonNull<Z3_probe>, p2: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return a probe that evaluates to "true" when `p` does not evaluate to true.
     ///
     /// NOTE: For probes, "true" is any value different from 0.0.
-    pub fn Z3_probe_not(x: Z3_context, p: Z3_probe) -> Z3_probe;
+    pub fn Z3_probe_not(x: NonNull<Z3_context>, p: NonNull<Z3_probe>) -> *mut Z3_probe;
 
     /// Return the number of builtin tactics available in Z3.
     ///
     /// # See also:
     ///
     /// - [`Z3_get_tactic_name`]
-    pub fn Z3_get_num_tactics(c: Z3_context) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_num_tactics(c: NonNull<Z3_context>) -> ::std::os::raw::c_uint;
 
     /// Return the name of the idx tactic.
     ///
@@ -5282,14 +5163,14 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_num_tactics`]
-    pub fn Z3_get_tactic_name(c: Z3_context, i: ::std::os::raw::c_uint) -> Z3_string;
+    pub fn Z3_get_tactic_name(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint) -> Z3_string;
 
     /// Return the number of builtin probes available in Z3.
     ///
     /// # See also:
     ///
     /// - [`Z3_get_probe_name`]
-    pub fn Z3_get_num_probes(c: Z3_context) -> ::std::os::raw::c_uint;
+    pub fn Z3_get_num_probes(c: NonNull<Z3_context>) -> ::std::os::raw::c_uint;
 
     /// Return the name of the `i` probe.
     ///
@@ -5300,30 +5181,30 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_get_num_probes`]
-    pub fn Z3_get_probe_name(c: Z3_context, i: ::std::os::raw::c_uint) -> Z3_string;
+    pub fn Z3_get_probe_name(c: NonNull<Z3_context>, i: ::std::os::raw::c_uint) -> Z3_string;
 
     /// Return a string containing a description of parameters accepted by the given tactic.
-    pub fn Z3_tactic_get_help(c: Z3_context, t: Z3_tactic) -> Z3_string;
+    pub fn Z3_tactic_get_help(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>) -> Z3_string;
 
     /// Return the parameter description set for the given tactic object.
-    pub fn Z3_tactic_get_param_descrs(c: Z3_context, t: Z3_tactic) -> Z3_param_descrs;
+    pub fn Z3_tactic_get_param_descrs(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>) -> *mut Z3_param_descrs;
 
     /// Return a string containing a description of the tactic with the given name.
-    pub fn Z3_tactic_get_descr(c: Z3_context, name: Z3_string) -> Z3_string;
+    pub fn Z3_tactic_get_descr(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> Z3_string;
 
     /// Return a string containing a description of the probe with the given name.
-    pub fn Z3_probe_get_descr(c: Z3_context, name: Z3_string) -> Z3_string;
+    pub fn Z3_probe_get_descr(c: NonNull<Z3_context>, name: NonNull<Z3_string>) -> Z3_string;
 
     /// Execute the probe over the goal. The probe always produce a double value.
     /// "Boolean" probes return 0.0 for false, and a value different from 0.0 for true.
-    pub fn Z3_probe_apply(c: Z3_context, p: Z3_probe, g: Z3_goal) -> f64;
+    pub fn Z3_probe_apply(c: NonNull<Z3_context>, p: NonNull<Z3_probe>, g: NonNull<Z3_goal>) -> f64;
 
     /// Apply tactic `t` to the goal `g`.
     ///
     /// # See also:
     ///
     /// - [`Z3_tactic_apply_ex`]
-    pub fn Z3_tactic_apply(c: Z3_context, t: Z3_tactic, g: Z3_goal) -> Z3_apply_result;
+    pub fn Z3_tactic_apply(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>, g: NonNull<Z3_goal>) -> *mut Z3_apply_result;
 
     /// Apply tactic `t` to the goal `g` using the parameter set `p`.
     ///
@@ -5331,20 +5212,20 @@ extern "C" {
     ///
     /// - [`Z3_tactic_apply`]
     pub fn Z3_tactic_apply_ex(
-        c: Z3_context,
-        t: Z3_tactic,
-        g: Z3_goal,
-        p: Z3_params,
-    ) -> Z3_apply_result;
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_tactic>,
+        g: NonNull<Z3_goal>,
+        p: NonNull<Z3_params>,
+    ) -> *mut Z3_apply_result;
 
     /// Increment the reference counter of the given `Z3_apply_result` object.
-    pub fn Z3_apply_result_inc_ref(c: Z3_context, r: Z3_apply_result);
+    pub fn Z3_apply_result_inc_ref(c: NonNull<Z3_context>, r: NonNull<Z3_apply_result>);
 
     /// Decrement the reference counter of the given `Z3_apply_result` object.
-    pub fn Z3_apply_result_dec_ref(c: Z3_context, r: Z3_apply_result);
+    pub fn Z3_apply_result_dec_ref(c: NonNull<Z3_context>, r: NonNull<Z3_apply_result>);
 
     /// Convert the `Z3_apply_result` object returned by [`Z3_tactic_apply`] into a string.
-    pub fn Z3_apply_result_to_string(c: Z3_context, r: Z3_apply_result) -> Z3_string;
+    pub fn Z3_apply_result_to_string(c: NonNull<Z3_context>, r: NonNull<Z3_apply_result>) -> Z3_string;
 
     /// Return the number of subgoals in the `Z3_apply_result` object returned by [`Z3_tactic_apply`].
     ///
@@ -5352,8 +5233,8 @@ extern "C" {
     ///
     /// - [`Z3_apply_result_get_subgoal`]
     pub fn Z3_apply_result_get_num_subgoals(
-        c: Z3_context,
-        r: Z3_apply_result,
+        c: NonNull<Z3_context>,
+        r: NonNull<Z3_apply_result>,
     ) -> ::std::os::raw::c_uint;
 
     /// Return one of the subgoals in the `Z3_apply_result` object returned by [`Z3_tactic_apply`].
@@ -5366,10 +5247,10 @@ extern "C" {
     ///
     /// - [`Z3_apply_result_get_num_subgoals`]
     pub fn Z3_apply_result_get_subgoal(
-        c: Z3_context,
-        r: Z3_apply_result,
+        c: NonNull<Z3_context>,
+        r: NonNull<Z3_apply_result>,
         i: ::std::os::raw::c_uint,
-    ) -> Z3_goal;
+    ) -> *mut Z3_goal;
 
     /// Create a new solver. This solver is a "combined solver" (see
     /// `combined_solver` module) that internally uses a non-incremental (solver1) and an
@@ -5409,7 +5290,7 @@ extern "C" {
     /// - [`Z3_mk_simple_solver`]
     /// - [`Z3_mk_solver_for_logic`]
     /// - [`Z3_mk_solver_from_tactic`]
-    pub fn Z3_mk_solver(c: Z3_context) -> Z3_solver;
+    pub fn Z3_mk_solver(c: NonNull<Z3_context>) -> *mut Z3_solver;
 
     /// Create a new incremental solver.
     ///
@@ -5438,7 +5319,7 @@ extern "C" {
     /// - [`Z3_mk_solver`]
     /// - [`Z3_mk_solver_for_logic`]
     /// - [`Z3_mk_solver_from_tactic`]
-    pub fn Z3_mk_simple_solver(c: Z3_context) -> Z3_solver;
+    pub fn Z3_mk_simple_solver(c: NonNull<Z3_context>) -> *mut Z3_solver;
 
     /// Create a new solver customized for the given logic.
     /// It behaves like [`Z3_mk_solver`] if the logic is unknown or unsupported.
@@ -5451,7 +5332,7 @@ extern "C" {
     /// - [`Z3_mk_solver`]
     /// - [`Z3_mk_simple_solver`]
     /// - [`Z3_mk_solver_from_tactic`]
-    pub fn Z3_mk_solver_for_logic(c: Z3_context, logic: Z3_symbol) -> Z3_solver;
+    pub fn Z3_mk_solver_for_logic(c: NonNull<Z3_context>, logic: NonNull<Z3_symbol>) -> *mut Z3_solver;
 
     /// Create a new solver that is implemented using the given tactic.
     /// The solver supports the commands [`Z3_solver_push`] and [`Z3_solver_pop`], but it
@@ -5465,13 +5346,13 @@ extern "C" {
     /// - [`Z3_mk_solver`]
     /// - [`Z3_mk_simple_solver`]
     /// - [`Z3_mk_solver_for_logic`]
-    pub fn Z3_mk_solver_from_tactic(c: Z3_context, t: Z3_tactic) -> Z3_solver;
+    pub fn Z3_mk_solver_from_tactic(c: NonNull<Z3_context>, t: NonNull<Z3_tactic>) -> *mut Z3_solver;
 
     /// Copy a solver `s` from the context `source` to the context `target`.
-    pub fn Z3_solver_translate(source: Z3_context, s: Z3_solver, target: Z3_context) -> Z3_solver;
+    pub fn Z3_solver_translate(source: NonNull<Z3_context>, s: NonNull<Z3_solver>, target: NonNull<Z3_context>) -> *mut Z3_solver;
 
     /// Ad-hoc method for importing model conversion from solver.
-    pub fn Z3_solver_import_model_converter(ctx: Z3_context, src: Z3_solver, dst: Z3_solver);
+    pub fn Z3_solver_import_model_converter(ctx: NonNull<Z3_context>, src: NonNull<Z3_solver>, dst: NonNull<Z3_solver>);
 
     /// Return a string describing all solver available parameters.
     ///
@@ -5479,7 +5360,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_get_param_descrs`]
     /// - [`Z3_solver_set_params`]
-    pub fn Z3_solver_get_help(c: Z3_context, s: Z3_solver) -> Z3_string;
+    pub fn Z3_solver_get_help(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> Z3_string;
 
     /// Return the parameter description set for the given solver object.
     ///
@@ -5487,7 +5368,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_get_help`]
     /// - [`Z3_solver_set_params`]
-    pub fn Z3_solver_get_param_descrs(c: Z3_context, s: Z3_solver) -> Z3_param_descrs;
+    pub fn Z3_solver_get_param_descrs(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_param_descrs;
 
     /// Set the given solver using the given parameters.
     ///
@@ -5495,13 +5376,13 @@ extern "C" {
     ///
     /// - [`Z3_solver_get_help`]
     /// - [`Z3_solver_get_param_descrs`]
-    pub fn Z3_solver_set_params(c: Z3_context, s: Z3_solver, p: Z3_params);
+    pub fn Z3_solver_set_params(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, p: NonNull<Z3_params>);
 
     /// Increment the reference counter of the given solver.
-    pub fn Z3_solver_inc_ref(c: Z3_context, s: Z3_solver);
+    pub fn Z3_solver_inc_ref(c: NonNull<Z3_context>, s: NonNull<Z3_solver>);
 
     /// Decrement the reference counter of the given solver.
-    pub fn Z3_solver_dec_ref(c: Z3_context, s: Z3_solver);
+    pub fn Z3_solver_dec_ref(c: NonNull<Z3_context>, s: NonNull<Z3_solver>);
 
     /// Create a backtracking point.
     ///
@@ -5510,7 +5391,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_solver_pop`]
-    pub fn Z3_solver_push(c: Z3_context, s: Z3_solver);
+    pub fn Z3_solver_push(c: NonNull<Z3_context>, s: NonNull<Z3_solver>);
 
     /// Backtrack `n` backtracking points.
     ///
@@ -5521,7 +5402,7 @@ extern "C" {
     /// # Preconditions:
     ///
     /// - `n <= Z3_solver_get_num_scopes(c, s)`
-    pub fn Z3_solver_pop(c: Z3_context, s: Z3_solver, n: ::std::os::raw::c_uint);
+    pub fn Z3_solver_pop(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, n: ::std::os::raw::c_uint);
 
     /// Remove all assertions from the solver.
     ///
@@ -5529,7 +5410,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_assert`]
     /// - [`Z3_solver_assert_and_track`]
-    pub fn Z3_solver_reset(c: Z3_context, s: Z3_solver);
+    pub fn Z3_solver_reset(c: NonNull<Z3_context>, s: NonNull<Z3_solver>);
 
     /// Return the number of backtracking points.
     ///
@@ -5537,7 +5418,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_push`]
     /// - [`Z3_solver_pop`]
-    pub fn Z3_solver_get_num_scopes(c: Z3_context, s: Z3_solver) -> ::std::os::raw::c_uint;
+    pub fn Z3_solver_get_num_scopes(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> ::std::os::raw::c_uint;
 
     /// Assert a constraint into the solver.
     ///
@@ -5548,7 +5429,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_assert_and_track`]
     /// - [`Z3_solver_reset`]
-    pub fn Z3_solver_assert(c: Z3_context, s: Z3_solver, a: Z3_ast);
+    pub fn Z3_solver_assert(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, a: NonNull<Z3_ast>);
 
     /// Assert a constraint `a` into the solver, and track it (in the
     /// unsat) core using the Boolean constant `p`.
@@ -5569,7 +5450,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_assert`]
     /// - [`Z3_solver_reset`]
-    pub fn Z3_solver_assert_and_track(c: Z3_context, s: Z3_solver, a: Z3_ast, p: Z3_ast);
+    pub fn Z3_solver_assert_and_track(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, a: NonNull<Z3_ast>, p: NonNull<Z3_ast>);
 
     /// load solver assertions from a file.
     ///
@@ -5577,7 +5458,7 @@ extern "C" {
     ///
     /// - [`Z3_solver_from_string`]
     /// - [`Z3_solver_to_string`]
-    pub fn Z3_solver_from_file(c: Z3_context, s: Z3_solver, file_name: Z3_string);
+    pub fn Z3_solver_from_file(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, file_name: NonNull<Z3_string>);
 
     /// load solver assertions from a string.
     ///
@@ -5585,16 +5466,16 @@ extern "C" {
     ///
     /// - [`Z3_solver_from_file`]
     /// - [`Z3_solver_to_string`]
-    pub fn Z3_solver_from_string(c: Z3_context, s: Z3_solver, c_str: Z3_string);
+    pub fn Z3_solver_from_string(c: NonNull<Z3_context>, s: NonNull<Z3_solver>, c_str: NonNull<Z3_string>);
 
     /// Return the set of asserted formulas on the solver.
-    pub fn Z3_solver_get_assertions(c: Z3_context, s: Z3_solver) -> Z3_ast_vector;
+    pub fn Z3_solver_get_assertions(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_ast_vector;
 
     /// Return the set of units modulo model conversion.
-    pub fn Z3_solver_get_units(c: Z3_context, s: Z3_solver) -> Z3_ast_vector;
+    pub fn Z3_solver_get_units(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_ast_vector;
 
     /// Return the set of non units in the solver state.
-    pub fn Z3_solver_get_non_units(c: Z3_context, s: Z3_solver) -> Z3_ast_vector;
+    pub fn Z3_solver_get_non_units(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_ast_vector;
 
     /// Check whether the assertions in a given solver are consistent or not.
     ///
@@ -5614,7 +5495,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_solver_check_assumptions`]
-    pub fn Z3_solver_check(c: Z3_context, s: Z3_solver) -> Z3_lbool;
+    pub fn Z3_solver_check(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_lbool;
 
     /// Check whether the assertions in the given solver and
     /// optional assumptions are consistent or not.
@@ -5628,11 +5509,11 @@ extern "C" {
     ///
     /// - [`Z3_solver_check`]
     pub fn Z3_solver_check_assumptions(
-        c: Z3_context,
-        s: Z3_solver,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_solver>,
         num_assumptions: ::std::os::raw::c_uint,
         assumptions: *const Z3_ast,
-    ) -> Z3_lbool;
+    ) -> *mut Z3_lbool;
 
     /// Retrieve congruence class representatives for terms.
     ///
@@ -5649,21 +5530,21 @@ extern "C" {
     /// A side-effect of the function is a satisfiability check on the assertions on the solver that is passed in.
     /// The function return `Z3_L_FALSE` if the current assertions are not satisfiable.
     pub fn Z3_get_implied_equalities(
-        c: Z3_context,
-        s: Z3_solver,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_solver>,
         num_terms: ::std::os::raw::c_uint,
         terms: *const Z3_ast,
         class_ids: *mut ::std::os::raw::c_uint,
-    ) -> Z3_lbool;
+    ) -> *mut Z3_lbool;
 
     /// retrieve consequences from solver that determine values of the supplied function symbols.
     pub fn Z3_solver_get_consequences(
-        c: Z3_context,
-        s: Z3_solver,
-        assumptions: Z3_ast_vector,
-        variables: Z3_ast_vector,
-        consequences: Z3_ast_vector,
-    ) -> Z3_lbool;
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_solver>,
+        assumptions: NonNull<Z3_ast_vector>,
+        variables: NonNull<Z3_ast_vector>,
+        consequences: NonNull<Z3_ast_vector>,
+    ) -> *mut Z3_lbool;
 
     /// Extract a next cube for a solver. The last cube is the constant `true` or `false`.
     /// The number of (non-constant) cubes is by default 1. For the sat solver cubing is controlled
@@ -5679,24 +5560,24 @@ extern "C" {
     /// The last argument is a backtracking level. It instructs the cube process to backtrack below
     /// the indicated level for the next cube.
     pub fn Z3_solver_cube(
-        c: Z3_context,
-        s: Z3_solver,
-        vars: Z3_ast_vector,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_solver>,
+        vars: NonNull<Z3_ast_vector>,
         backtrack_level: ::std::os::raw::c_uint,
-    ) -> Z3_ast_vector;
+    ) -> *mut Z3_ast_vector;
 
     /// Retrieve the model for the last [`Z3_solver_check`]
     ///
     /// The error handler is invoked if a model is not available because
     /// the commands above were not invoked for the given solver, or if the result was `Z3_L_FALSE`.
-    pub fn Z3_solver_get_model(c: Z3_context, s: Z3_solver) -> Z3_model;
+    pub fn Z3_solver_get_model(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_model;
 
     /// Retrieve the proof for the last [`Z3_solver_check`]
     ///
     /// The error handler is invoked if proof generation is not enabled,
     /// or if the commands above were not invoked for the given solver,
     /// or if the result was different from `Z3_L_FALSE`.
-    pub fn Z3_solver_get_proof(c: Z3_context, s: Z3_solver) -> Z3_ast;
+    pub fn Z3_solver_get_proof(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_ast;
 
     /// Retrieve the unsat core for the last [`Z3_solver_check_assumptions`]
     /// The unsat core is a subset of the assumptions `a`.
@@ -5705,16 +5586,16 @@ extern "C" {
     /// unsat core can be enabled via the `"sat.core.minimize"` and `"smt.core.minimize"`
     /// settings for SAT and SMT cores respectively. Generation of minimized unsat cores
     /// will be more expensive.
-    pub fn Z3_solver_get_unsat_core(c: Z3_context, s: Z3_solver) -> Z3_ast_vector;
+    pub fn Z3_solver_get_unsat_core(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_ast_vector;
 
     /// Return a brief justification for an "unknown" result (i.e., `Z3_L_UNDEF`) for
     /// the commands [`Z3_solver_check`]
-    pub fn Z3_solver_get_reason_unknown(c: Z3_context, s: Z3_solver) -> Z3_string;
+    pub fn Z3_solver_get_reason_unknown(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> Z3_string;
 
     /// Return statistics for the given solver.
     ///
     /// NOTE: User must use [`Z3_stats_inc_ref`] and [`Z3_stats_dec_ref`] to manage [`Z3_stats`] objects.
-    pub fn Z3_solver_get_statistics(c: Z3_context, s: Z3_solver) -> Z3_stats;
+    pub fn Z3_solver_get_statistics(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> *mut Z3_stats;
 
     /// Convert a solver into a string.
     ///
@@ -5722,40 +5603,40 @@ extern "C" {
     ///
     /// - [`Z3_solver_from_file`]
     /// - [`Z3_solver_from_string`]
-    pub fn Z3_solver_to_string(c: Z3_context, s: Z3_solver) -> Z3_string;
+    pub fn Z3_solver_to_string(c: NonNull<Z3_context>, s: NonNull<Z3_solver>) -> Z3_string;
 
     /// Convert a statistics into a string.
-    pub fn Z3_stats_to_string(c: Z3_context, s: Z3_stats) -> Z3_string;
+    pub fn Z3_stats_to_string(c: NonNull<Z3_context>, s: NonNull<Z3_stats>) -> Z3_string;
 
     /// Increment the reference counter of the given statistics object.
-    pub fn Z3_stats_inc_ref(c: Z3_context, s: Z3_stats);
+    pub fn Z3_stats_inc_ref(c: NonNull<Z3_context>, s: NonNull<Z3_stats>);
 
     /// Decrement the reference counter of the given statistics object.
-    pub fn Z3_stats_dec_ref(c: Z3_context, s: Z3_stats);
+    pub fn Z3_stats_dec_ref(c: NonNull<Z3_context>, s: NonNull<Z3_stats>);
 
     /// Return the number of statistical data in `s`.
-    pub fn Z3_stats_size(c: Z3_context, s: Z3_stats) -> ::std::os::raw::c_uint;
+    pub fn Z3_stats_size(c: NonNull<Z3_context>, s: NonNull<Z3_stats>) -> ::std::os::raw::c_uint;
 
     /// Return the key (a string) for a particular statistical data.
     ///
     /// # Preconditions:
     ///
     /// - `idx < Z3_stats_size(c, s)`
-    pub fn Z3_stats_get_key(c: Z3_context, s: Z3_stats, idx: ::std::os::raw::c_uint) -> Z3_string;
+    pub fn Z3_stats_get_key(c: NonNull<Z3_context>, s: NonNull<Z3_stats>, idx: ::std::os::raw::c_uint) -> Z3_string;
 
     /// Return `true` if the given statistical data is a unsigned integer.
     ///
     /// # Preconditions:
     ///
     /// - `idx < Z3_stats_size(c, s)`
-    pub fn Z3_stats_is_uint(c: Z3_context, s: Z3_stats, idx: ::std::os::raw::c_uint) -> bool;
+    pub fn Z3_stats_is_uint(c: NonNull<Z3_context>, s: NonNull<Z3_stats>, idx: ::std::os::raw::c_uint) -> bool;
 
     /// Return `true` if the given statistical data is a double.
     ///
     /// # Preconditions:
     ///
     /// - `idx < Z3_stats_size(c, s)`
-    pub fn Z3_stats_is_double(c: Z3_context, s: Z3_stats, idx: ::std::os::raw::c_uint) -> bool;
+    pub fn Z3_stats_is_double(c: NonNull<Z3_context>, s: NonNull<Z3_stats>, idx: ::std::os::raw::c_uint) -> bool;
 
     /// Return the unsigned value of the given statistical data.
     ///
@@ -5763,8 +5644,8 @@ extern "C" {
     ///
     /// - `idx < Z3_stats_size(c, s) && Z3_stats_is_uint(c, s)`
     pub fn Z3_stats_get_uint_value(
-        c: Z3_context,
-        s: Z3_stats,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_stats>,
         idx: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_uint;
 
@@ -5774,8 +5655,8 @@ extern "C" {
     ///
     /// - `idx < Z3_stats_size(c, s) && Z3_stats_is_double(c, s)`
     pub fn Z3_stats_get_double_value(
-        c: Z3_context,
-        s: Z3_stats,
+        c: NonNull<Z3_context>,
+        s: NonNull<Z3_stats>,
         idx: ::std::os::raw::c_uint,
     ) -> f64;
 
@@ -5786,85 +5667,85 @@ extern "C" {
     ///
     /// NOTE: Reference counting must be used to manage AST vectors, even when the `Z3_context` was
     /// created using [`Z3_mk_context`] instead of [`Z3_mk_context_rc`].
-    pub fn Z3_mk_ast_vector(c: Z3_context) -> Z3_ast_vector;
+    pub fn Z3_mk_ast_vector(c: NonNull<Z3_context>) -> *mut Z3_ast_vector;
 
     /// Increment the reference counter of the given AST vector.
-    pub fn Z3_ast_vector_inc_ref(c: Z3_context, v: Z3_ast_vector);
+    pub fn Z3_ast_vector_inc_ref(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>);
 
     /// Decrement the reference counter of the given AST vector.
-    pub fn Z3_ast_vector_dec_ref(c: Z3_context, v: Z3_ast_vector);
+    pub fn Z3_ast_vector_dec_ref(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>);
 
     /// Return the size of the given AST vector.
-    pub fn Z3_ast_vector_size(c: Z3_context, v: Z3_ast_vector) -> ::std::os::raw::c_uint;
+    pub fn Z3_ast_vector_size(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>) -> ::std::os::raw::c_uint;
 
     /// Return the AST at position `i` in the AST vector `v`.
     ///
     /// # Preconditions:
     ///
     /// - `i < Z3_ast_vector_size(c, v)`
-    pub fn Z3_ast_vector_get(c: Z3_context, v: Z3_ast_vector, i: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_ast_vector_get(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>, i: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Update position `i` of the AST vector `v` with the AST `a`.
     ///
     /// # Preconditions:
     ///
     /// - `i < Z3_ast_vector_size(c, v)`
-    pub fn Z3_ast_vector_set(c: Z3_context, v: Z3_ast_vector, i: ::std::os::raw::c_uint, a: Z3_ast);
+    pub fn Z3_ast_vector_set(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>, i: ::std::os::raw::c_uint, a: NonNull<Z3_ast>);
 
     /// Resize the AST vector `v`.
-    pub fn Z3_ast_vector_resize(c: Z3_context, v: Z3_ast_vector, n: ::std::os::raw::c_uint);
+    pub fn Z3_ast_vector_resize(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>, n: ::std::os::raw::c_uint);
 
     /// Add the AST `a` in the end of the AST vector `v`. The size of `v` is increased by one.
-    pub fn Z3_ast_vector_push(c: Z3_context, v: Z3_ast_vector, a: Z3_ast);
+    pub fn Z3_ast_vector_push(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>, a: NonNull<Z3_ast>);
 
     /// Translate the AST vector `v` from context `s` into an AST vector in context `t`.
-    pub fn Z3_ast_vector_translate(s: Z3_context, v: Z3_ast_vector, t: Z3_context)
-        -> Z3_ast_vector;
+    pub fn Z3_ast_vector_translate(s: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>, t: NonNull<Z3_context>)
+        -> *mut Z3_ast_vector;
 
     /// Convert AST vector into a string.
-    pub fn Z3_ast_vector_to_string(c: Z3_context, v: Z3_ast_vector) -> Z3_string;
+    pub fn Z3_ast_vector_to_string(c: NonNull<Z3_context>, v: NonNull<Z3_ast_vector>) -> Z3_string;
 
     /// Return an empty mapping from AST to AST
     ///
     /// NOTE: Reference counting must be used to manage AST maps, even when the `Z3_context` was
     /// created using [`Z3_mk_context`] instead of [`Z3_mk_context_rc`].
-    pub fn Z3_mk_ast_map(c: Z3_context) -> Z3_ast_map;
+    pub fn Z3_mk_ast_map(c: NonNull<Z3_context>) -> *mut Z3_ast_map;
 
     /// Increment the reference counter of the given AST map.
-    pub fn Z3_ast_map_inc_ref(c: Z3_context, m: Z3_ast_map);
+    pub fn Z3_ast_map_inc_ref(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>);
 
     /// Decrement the reference counter of the given AST map.
-    pub fn Z3_ast_map_dec_ref(c: Z3_context, m: Z3_ast_map);
+    pub fn Z3_ast_map_dec_ref(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>);
 
     /// Return true if the map `m` contains the AST key `k`.
-    pub fn Z3_ast_map_contains(c: Z3_context, m: Z3_ast_map, k: Z3_ast) -> bool;
+    pub fn Z3_ast_map_contains(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>, k: NonNull<Z3_ast>) -> bool;
 
     /// Return the value associated with the key `k`.
     ///
     /// The procedure invokes the error handler if `k` is not in the map.
-    pub fn Z3_ast_map_find(c: Z3_context, m: Z3_ast_map, k: Z3_ast) -> Z3_ast;
+    pub fn Z3_ast_map_find(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>, k: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Store/Replace a new key, value pair in the given map.
-    pub fn Z3_ast_map_insert(c: Z3_context, m: Z3_ast_map, k: Z3_ast, v: Z3_ast);
+    pub fn Z3_ast_map_insert(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>, k: NonNull<Z3_ast>, v: NonNull<Z3_ast>);
 
     /// Erase a key from the map.
-    pub fn Z3_ast_map_erase(c: Z3_context, m: Z3_ast_map, k: Z3_ast);
+    pub fn Z3_ast_map_erase(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>, k: NonNull<Z3_ast>);
 
     /// Remove all keys from the given map.
-    pub fn Z3_ast_map_reset(c: Z3_context, m: Z3_ast_map);
+    pub fn Z3_ast_map_reset(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>);
 
     /// Return the size of the given map.
-    pub fn Z3_ast_map_size(c: Z3_context, m: Z3_ast_map) -> ::std::os::raw::c_uint;
+    pub fn Z3_ast_map_size(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>) -> ::std::os::raw::c_uint;
 
     /// Return the keys stored in the given map.
-    pub fn Z3_ast_map_keys(c: Z3_context, m: Z3_ast_map) -> Z3_ast_vector;
+    pub fn Z3_ast_map_keys(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>) -> *mut Z3_ast_vector;
 
     /// Convert the given map into a string.
-    pub fn Z3_ast_map_to_string(c: Z3_context, m: Z3_ast_map) -> Z3_string;
+    pub fn Z3_ast_map_to_string(c: NonNull<Z3_context>, m: NonNull<Z3_ast_map>) -> Z3_string;
 
     /// Return `true` if `a` can be used as value in the Z3 real algebraic
     /// number package.
-    pub fn Z3_algebraic_is_value(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_algebraic_is_value(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a` is positive, and `false` otherwise.
     ///
@@ -5875,7 +5756,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_is_pos(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_algebraic_is_pos(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a` is negative, and `false` otherwise.
     ///
@@ -5886,7 +5767,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_is_neg(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_algebraic_is_neg(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a` is zero, and `false` otherwise.
     ///
@@ -5897,7 +5778,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_is_zero(c: Z3_context, a: Z3_ast) -> bool;
+    pub fn Z3_algebraic_is_zero(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> bool;
 
     /// Return 1 if `a` is positive, 0 if `a` is zero, and -1 if `a` is negative.
     ///
@@ -5908,7 +5789,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_sign(c: Z3_context, a: Z3_ast) -> ::std::os::raw::c_int;
+    pub fn Z3_algebraic_sign(c: NonNull<Z3_context>, a: NonNull<Z3_ast>) -> ::std::os::raw::c_int;
 
     /// Return the value `a + b`.
     ///
@@ -5924,7 +5805,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_add(c: Z3_context, a: Z3_ast, b: Z3_ast) -> Z3_ast;
+    pub fn Z3_algebraic_add(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return the value `a - b`.
     ///
@@ -5940,7 +5821,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_sub(c: Z3_context, a: Z3_ast, b: Z3_ast) -> Z3_ast;
+    pub fn Z3_algebraic_sub(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return the value `a * b`.
     ///
@@ -5956,7 +5837,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_mul(c: Z3_context, a: Z3_ast, b: Z3_ast) -> Z3_ast;
+    pub fn Z3_algebraic_mul(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return the value `a / b`.
     ///
@@ -5974,7 +5855,7 @@ extern "C" {
     ///
     /// - [`Z3_algebraic_is_value`]
     /// - [`Z3_algebraic_is_zero`]
-    pub fn Z3_algebraic_div(c: Z3_context, a: Z3_ast, b: Z3_ast) -> Z3_ast;
+    pub fn Z3_algebraic_div(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Return the `a^(1/k)`
     ///
@@ -5991,7 +5872,7 @@ extern "C" {
     ///
     /// - [`Z3_algebraic_is_neg`]
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_root(c: Z3_context, a: Z3_ast, k: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_algebraic_root(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, k: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Return the `a^k`
     ///
@@ -6006,7 +5887,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_power(c: Z3_context, a: Z3_ast, k: ::std::os::raw::c_uint) -> Z3_ast;
+    pub fn Z3_algebraic_power(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, k: ::std::os::raw::c_uint) -> *mut Z3_ast;
 
     /// Return `true` if `a < b`, and `false` otherwise.
     ///
@@ -6018,7 +5899,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_lt(c: Z3_context, a: Z3_ast, b: Z3_ast) -> bool;
+    pub fn Z3_algebraic_lt(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a > b`, and `false` otherwise.
     ///
@@ -6030,7 +5911,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_gt(c: Z3_context, a: Z3_ast, b: Z3_ast) -> bool;
+    pub fn Z3_algebraic_gt(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a <= b`, and `false` otherwise.
     ///
@@ -6042,7 +5923,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_le(c: Z3_context, a: Z3_ast, b: Z3_ast) -> bool;
+    pub fn Z3_algebraic_le(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a >= b`, and `false` otherwise.
     ///
@@ -6054,7 +5935,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_ge(c: Z3_context, a: Z3_ast, b: Z3_ast) -> bool;
+    pub fn Z3_algebraic_ge(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a == b`, and `false` otherwise.
     ///
@@ -6066,7 +5947,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_eq(c: Z3_context, a: Z3_ast, b: Z3_ast) -> bool;
+    pub fn Z3_algebraic_eq(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> bool;
 
     /// Return `true` if `a != b`, and `false` otherwise.
     ///
@@ -6078,7 +5959,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_algebraic_is_value`]
-    pub fn Z3_algebraic_neq(c: Z3_context, a: Z3_ast, b: Z3_ast) -> bool;
+    pub fn Z3_algebraic_neq(c: NonNull<Z3_context>, a: NonNull<Z3_ast>, b: NonNull<Z3_ast>) -> bool;
 
     /// Given a multivariate polynomial `p(x_0, ..., x_{n-1}, x_n)`, returns the
     /// roots of the univariate polynomial `p(a[0], ..., a[n-1], x_n)`.
@@ -6096,11 +5977,11 @@ extern "C" {
     ///
     /// - [`Z3_algebraic_is_value`]
     pub fn Z3_algebraic_roots(
-        c: Z3_context,
-        p: Z3_ast,
+        c: NonNull<Z3_context>,
+        p: NonNull<Z3_ast>,
         n: ::std::os::raw::c_uint,
         a: *mut Z3_ast,
-    ) -> Z3_ast_vector;
+    ) -> *mut Z3_ast_vector;
 
     /// Given a multivariate polynomial `p(x_0, ..., x_{n-1})`, return the
     /// sign of `p(a[0], ..., a[n-1])`.
@@ -6114,8 +5995,8 @@ extern "C" {
     ///
     /// - [`Z3_algebraic_is_value`]
     pub fn Z3_algebraic_eval(
-        c: Z3_context,
-        p: Z3_ast,
+        c: NonNull<Z3_context>,
+        p: NonNull<Z3_ast>,
         n: ::std::os::raw::c_uint,
         a: *mut Z3_ast,
     ) -> ::std::os::raw::c_int;
@@ -6130,29 +6011,29 @@ extern "C" {
     /// Example: `f(a)` is a considered to be a variable in the polynomial
     /// `f(a)*f(a) + 2*f(a) + 1`
     pub fn Z3_polynomial_subresultants(
-        c: Z3_context,
-        p: Z3_ast,
-        q: Z3_ast,
-        x: Z3_ast,
-    ) -> Z3_ast_vector;
+        c: NonNull<Z3_context>,
+        p: NonNull<Z3_ast>,
+        q: NonNull<Z3_ast>,
+        x: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast_vector;
 
     /// Delete a RCF numeral created using the RCF API.
-    pub fn Z3_rcf_del(c: Z3_context, a: Z3_rcf_num);
+    pub fn Z3_rcf_del(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>);
 
     /// Return a RCF rational using the given string.
-    pub fn Z3_rcf_mk_rational(c: Z3_context, val: Z3_string) -> Z3_rcf_num;
+    pub fn Z3_rcf_mk_rational(c: NonNull<Z3_context>, val: NonNull<Z3_string>) -> *mut Z3_rcf_num;
 
     /// Return a RCF small integer.
-    pub fn Z3_rcf_mk_small_int(c: Z3_context, val: ::std::os::raw::c_int) -> Z3_rcf_num;
+    pub fn Z3_rcf_mk_small_int(c: NonNull<Z3_context>, val: ::std::os::raw::c_int) -> *mut Z3_rcf_num;
 
     /// Return Pi
-    pub fn Z3_rcf_mk_pi(c: Z3_context) -> Z3_rcf_num;
+    pub fn Z3_rcf_mk_pi(c: NonNull<Z3_context>) -> *mut Z3_rcf_num;
 
     /// Return e (Euler's constant)
-    pub fn Z3_rcf_mk_e(c: Z3_context) -> Z3_rcf_num;
+    pub fn Z3_rcf_mk_e(c: NonNull<Z3_context>) -> *mut Z3_rcf_num;
 
     /// Return a new infinitesimal that is smaller than all elements in the Z3 field.
-    pub fn Z3_rcf_mk_infinitesimal(c: Z3_context) -> Z3_rcf_num;
+    pub fn Z3_rcf_mk_infinitesimal(c: NonNull<Z3_context>) -> *mut Z3_rcf_num;
 
     /// Store in roots the roots of the polynomial `a[n-1]*x^{n-1} + ... + a[0]`.
     /// The output vector `roots` must have size `n`.
@@ -6162,63 +6043,63 @@ extern "C" {
     ///
     /// - The input polynomial is not the zero polynomial.
     pub fn Z3_rcf_mk_roots(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         n: ::std::os::raw::c_uint,
         a: *const Z3_rcf_num,
         roots: *mut Z3_rcf_num,
     ) -> ::std::os::raw::c_uint;
 
     /// Return the value `a + b`.
-    pub fn Z3_rcf_add(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> Z3_rcf_num;
+    pub fn Z3_rcf_add(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> *mut Z3_rcf_num;
 
     /// Return the value `a - b`.
-    pub fn Z3_rcf_sub(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> Z3_rcf_num;
+    pub fn Z3_rcf_sub(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> *mut Z3_rcf_num;
 
     /// Return the value `a * b`.
-    pub fn Z3_rcf_mul(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> Z3_rcf_num;
+    pub fn Z3_rcf_mul(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> *mut Z3_rcf_num;
 
     /// Return the value `a / b`.
-    pub fn Z3_rcf_div(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> Z3_rcf_num;
+    pub fn Z3_rcf_div(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> *mut Z3_rcf_num;
 
     /// Return the value `-a`.
-    pub fn Z3_rcf_neg(c: Z3_context, a: Z3_rcf_num) -> Z3_rcf_num;
+    pub fn Z3_rcf_neg(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>) -> *mut Z3_rcf_num;
 
     /// Return the value `1/a`.
-    pub fn Z3_rcf_inv(c: Z3_context, a: Z3_rcf_num) -> Z3_rcf_num;
+    pub fn Z3_rcf_inv(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>) -> *mut Z3_rcf_num;
 
     /// Return the value `a^k`.
-    pub fn Z3_rcf_power(c: Z3_context, a: Z3_rcf_num, k: ::std::os::raw::c_uint) -> Z3_rcf_num;
+    pub fn Z3_rcf_power(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, k: ::std::os::raw::c_uint) -> *mut Z3_rcf_num;
 
     /// Return `true` if `a < b`.
-    pub fn Z3_rcf_lt(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> bool;
+    pub fn Z3_rcf_lt(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> bool;
 
     /// Return `true` if `a > b`.
-    pub fn Z3_rcf_gt(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> bool;
+    pub fn Z3_rcf_gt(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> bool;
 
     /// Return `true` if `a <= b`.
-    pub fn Z3_rcf_le(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> bool;
+    pub fn Z3_rcf_le(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> bool;
 
     /// Return `true` if `a >= b`.
-    pub fn Z3_rcf_ge(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> bool;
+    pub fn Z3_rcf_ge(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> bool;
 
     /// Return `true` if `a == b`.
-    pub fn Z3_rcf_eq(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> bool;
+    pub fn Z3_rcf_eq(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> bool;
 
     /// Return `true` if `a != b`.
-    pub fn Z3_rcf_neq(c: Z3_context, a: Z3_rcf_num, b: Z3_rcf_num) -> bool;
+    pub fn Z3_rcf_neq(c: NonNull<Z3_context>, a: NonNull<Z3_rcf_num>, b: NonNull<Z3_rcf_num>) -> bool;
 
     /// Convert the RCF numeral into a string.
     pub fn Z3_rcf_num_to_string(
-        c: Z3_context,
-        a: Z3_rcf_num,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_rcf_num>,
         compact: bool,
         html: bool,
     ) -> Z3_string;
 
     /// Convert the RCF numeral into a string in decimal notation.
     pub fn Z3_rcf_num_to_decimal_string(
-        c: Z3_context,
-        a: Z3_rcf_num,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_rcf_num>,
         prec: ::std::os::raw::c_uint,
     ) -> Z3_string;
 
@@ -6226,8 +6107,8 @@ extern "C" {
     ///
     /// We have that `a = n/d`, moreover `n` and `d` are not represented using rational functions.
     pub fn Z3_rcf_get_numerator_denominator(
-        c: Z3_context,
-        a: Z3_rcf_num,
+        c: NonNull<Z3_context>,
+        a: NonNull<Z3_rcf_num>,
         n: *mut Z3_rcf_num,
         d: *mut Z3_rcf_num,
     );
@@ -6236,13 +6117,13 @@ extern "C" {
     ///
     /// NOTE: User must use [`Z3_fixedpoint_inc_ref`] and [`Z3_fixedpoint_dec_ref`] to manage fixedpoint objects.
     /// Even if the context was created using [`Z3_mk_context`] instead of [`Z3_mk_context_rc`].
-    pub fn Z3_mk_fixedpoint(c: Z3_context) -> Z3_fixedpoint;
+    pub fn Z3_mk_fixedpoint(c: NonNull<Z3_context>) -> *mut Z3_fixedpoint;
 
     /// Increment the reference counter of the given fixedpoint context
-    pub fn Z3_fixedpoint_inc_ref(c: Z3_context, d: Z3_fixedpoint);
+    pub fn Z3_fixedpoint_inc_ref(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>);
 
     /// Decrement the reference counter of the given fixedpoint context.
-    pub fn Z3_fixedpoint_dec_ref(c: Z3_context, d: Z3_fixedpoint);
+    pub fn Z3_fixedpoint_dec_ref(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>);
 
     /// Add a universal Horn clause as a named rule.
     /// The `horn_rule` should be of the form:
@@ -6252,7 +6133,7 @@ extern "C" {
     /// |  (=> atoms horn_rule)
     /// |  atom
     /// ```
-    pub fn Z3_fixedpoint_add_rule(c: Z3_context, d: Z3_fixedpoint, rule: Z3_ast, name: Z3_symbol);
+    pub fn Z3_fixedpoint_add_rule(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>, rule: NonNull<Z3_ast>, name: NonNull<Z3_symbol>);
 
     /// Add a Database fact.
     ///
@@ -6268,9 +6149,9 @@ extern "C" {
     ///
     /// The call has the same effect as adding a rule where `r` is applied to the arguments.
     pub fn Z3_fixedpoint_add_fact(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        r: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        r: NonNull<Z3_func_decl>,
         num_args: ::std::os::raw::c_uint,
         args: *mut ::std::os::raw::c_uint,
     );
@@ -6279,7 +6160,7 @@ extern "C" {
     ///
     /// The constraints are used as background axioms when the fixedpoint engine uses the PDR mode.
     /// They are ignored for standard Datalog mode.
-    pub fn Z3_fixedpoint_assert(c: Z3_context, d: Z3_fixedpoint, axiom: Z3_ast);
+    pub fn Z3_fixedpoint_assert(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>, axiom: NonNull<Z3_ast>);
 
     /// Pose a query against the asserted rules.
     ///
@@ -6292,7 +6173,7 @@ extern "C" {
     /// - `Z3_L_FALSE` if the query is unsatisfiable.
     /// - `Z3_L_TRUE` if the query is satisfiable. Obtain the answer by calling [`Z3_fixedpoint_get_answer`].
     /// - `Z3_L_UNDEF` if the query was interrupted, timed out or otherwise failed.
-    pub fn Z3_fixedpoint_query(c: Z3_context, d: Z3_fixedpoint, query: Z3_ast) -> Z3_lbool;
+    pub fn Z3_fixedpoint_query(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>, query: NonNull<Z3_ast>) -> *mut Z3_lbool;
 
     /// Pose multiple queries against the asserted rules.
     ///
@@ -6303,11 +6184,11 @@ extern "C" {
     /// - `Z3_L_TRUE` if the query is satisfiable. Obtain the answer by calling [`Z3_fixedpoint_get_answer`].
     /// - `Z3_L_UNDEF` if the query was interrupted, timed out or otherwise failed.
     pub fn Z3_fixedpoint_query_relations(
-        c: Z3_context,
-        d: Z3_fixedpoint,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
         num_relations: ::std::os::raw::c_uint,
         relations: *const Z3_func_decl,
-    ) -> Z3_lbool;
+    ) -> *mut Z3_lbool;
 
     /// Retrieve a formula that encodes satisfying answers to the query.
     ///
@@ -6318,16 +6199,16 @@ extern "C" {
     ///
     /// When used in Datalog mode the previous call to `Z3_fixedpoint_query` must have returned `Z3_L_TRUE`.
     /// When used with the PDR engine, the previous call must have been either `Z3_L_TRUE` or `Z3_L_FALSE`.
-    pub fn Z3_fixedpoint_get_answer(c: Z3_context, d: Z3_fixedpoint) -> Z3_ast;
+    pub fn Z3_fixedpoint_get_answer(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>) -> *mut Z3_ast;
 
     /// Retrieve a string that describes the last status returned by [`Z3_fixedpoint_query`].
     ///
     /// Use this method when [`Z3_fixedpoint_query`] returns `Z3_L_UNDEF`.
-    pub fn Z3_fixedpoint_get_reason_unknown(c: Z3_context, d: Z3_fixedpoint) -> Z3_string;
+    pub fn Z3_fixedpoint_get_reason_unknown(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>) -> Z3_string;
 
     /// Update a named rule.
     /// A rule with the same name must have been previously created.
-    pub fn Z3_fixedpoint_update_rule(c: Z3_context, d: Z3_fixedpoint, a: Z3_ast, name: Z3_symbol);
+    pub fn Z3_fixedpoint_update_rule(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>, a: NonNull<Z3_ast>, name: NonNull<Z3_symbol>);
 
     /// Query the PDR engine for the maximal levels properties are known about predicate.
     ///
@@ -6335,9 +6216,9 @@ extern "C" {
     /// of `pred` with respect to the current exploration state.
     /// Note: this functionality is PDR specific.
     pub fn Z3_fixedpoint_get_num_levels(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        pred: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        pred: NonNull<Z3_func_decl>,
     ) -> ::std::os::raw::c_uint;
 
     /// Retrieve the current cover of `pred` up to `level` unfoldings.
@@ -6347,11 +6228,11 @@ extern "C" {
     ///
     /// Note: this functionality is PDR specific.
     pub fn Z3_fixedpoint_get_cover_delta(
-        c: Z3_context,
-        d: Z3_fixedpoint,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
         level: ::std::os::raw::c_int,
-        pred: Z3_func_decl,
-    ) -> Z3_ast;
+        pred: NonNull<Z3_func_decl>,
+    ) -> *mut Z3_ast;
 
     /// Add property about the predicate `pred`.
     /// Add a property of predicate `pred` at `level`.
@@ -6362,21 +6243,21 @@ extern "C" {
     ///
     /// Note: this functionality is PDR specific.
     pub fn Z3_fixedpoint_add_cover(
-        c: Z3_context,
-        d: Z3_fixedpoint,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
         level: ::std::os::raw::c_int,
-        pred: Z3_func_decl,
-        property: Z3_ast,
+        pred: NonNull<Z3_func_decl>,
+        property: NonNull<Z3_ast>,
     );
 
     /// Retrieve statistics information from the last call to [`Z3_fixedpoint_query`].
-    pub fn Z3_fixedpoint_get_statistics(c: Z3_context, d: Z3_fixedpoint) -> Z3_stats;
+    pub fn Z3_fixedpoint_get_statistics(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>) -> *mut Z3_stats;
 
     /// Register relation as Fixedpoint defined.
     /// Fixedpoint defined relations have least-fixedpoint semantics.
     /// For example, the relation is empty if it does not occur
     /// in a head or a fact.
-    pub fn Z3_fixedpoint_register_relation(c: Z3_context, d: Z3_fixedpoint, f: Z3_func_decl);
+    pub fn Z3_fixedpoint_register_relation(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>, f: NonNull<Z3_func_decl>);
 
     /// Configure the predicate representation.
     ///
@@ -6384,18 +6265,18 @@ extern "C" {
     /// The domains given by the list of symbols must belong to a set
     /// of built-in domains.
     pub fn Z3_fixedpoint_set_predicate_representation(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        f: Z3_func_decl,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        f: NonNull<Z3_func_decl>,
         num_relations: ::std::os::raw::c_uint,
         relation_kinds: *const Z3_symbol,
     );
 
     /// Retrieve set of rules from fixedpoint context.
-    pub fn Z3_fixedpoint_get_rules(c: Z3_context, f: Z3_fixedpoint) -> Z3_ast_vector;
+    pub fn Z3_fixedpoint_get_rules(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>) -> *mut Z3_ast_vector;
 
     /// Retrieve set of background assertions from fixedpoint context.
-    pub fn Z3_fixedpoint_get_assertions(c: Z3_context, f: Z3_fixedpoint) -> Z3_ast_vector;
+    pub fn Z3_fixedpoint_get_assertions(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>) -> *mut Z3_ast_vector;
 
     /// Set parameters on fixedpoint context.
     ///
@@ -6403,7 +6284,7 @@ extern "C" {
     ///
     /// - [`Z3_fixedpoint_get_help`]
     /// - [`Z3_fixedpoint_get_param_descrs`]
-    pub fn Z3_fixedpoint_set_params(c: Z3_context, f: Z3_fixedpoint, p: Z3_params);
+    pub fn Z3_fixedpoint_set_params(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>, p: NonNull<Z3_params>);
 
     /// Return a string describing all fixedpoint available parameters.
     ///
@@ -6411,7 +6292,7 @@ extern "C" {
     ///
     /// - [`Z3_fixedpoint_get_param_descrs`]
     /// - [`Z3_fixedpoint_set_params`]
-    pub fn Z3_fixedpoint_get_help(c: Z3_context, f: Z3_fixedpoint) -> Z3_string;
+    pub fn Z3_fixedpoint_get_help(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>) -> Z3_string;
 
     /// Return the parameter description set for the given fixedpoint object.
     ///
@@ -6419,7 +6300,7 @@ extern "C" {
     ///
     /// - [`Z3_fixedpoint_get_help`]
     /// - [`Z3_fixedpoint_set_params`]
-    pub fn Z3_fixedpoint_get_param_descrs(c: Z3_context, f: Z3_fixedpoint) -> Z3_param_descrs;
+    pub fn Z3_fixedpoint_get_param_descrs(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>) -> *mut Z3_param_descrs;
 
     /// Print the current rules and background axioms as a string.
     /// - `c`: - context.
@@ -6432,8 +6313,8 @@ extern "C" {
     /// - [`Z3_fixedpoint_from_file`]
     /// - [`Z3_fixedpoint_from_string`]
     pub fn Z3_fixedpoint_to_string(
-        c: Z3_context,
-        f: Z3_fixedpoint,
+        c: NonNull<Z3_context>,
+        f: NonNull<Z3_fixedpoint>,
         num_queries: ::std::os::raw::c_uint,
         queries: *mut Z3_ast,
     ) -> Z3_string;
@@ -6451,10 +6332,10 @@ extern "C" {
     /// - [`Z3_fixedpoint_from_file`]
     /// - [`Z3_fixedpoint_to_string`]
     pub fn Z3_fixedpoint_from_string(
-        c: Z3_context,
-        f: Z3_fixedpoint,
-        s: Z3_string,
-    ) -> Z3_ast_vector;
+        c: NonNull<Z3_context>,
+        f: NonNull<Z3_fixedpoint>,
+        s: NonNull<Z3_string>,
+    ) -> *mut Z3_ast_vector;
 
     /// Parse an SMT-LIB2 file with fixedpoint rules.
     /// Add the rules to the current fixedpoint context.
@@ -6468,13 +6349,13 @@ extern "C" {
     ///
     /// - [`Z3_fixedpoint_from_string`]
     /// - [`Z3_fixedpoint_to_string`]
-    pub fn Z3_fixedpoint_from_file(c: Z3_context, f: Z3_fixedpoint, s: Z3_string) -> Z3_ast_vector;
+    pub fn Z3_fixedpoint_from_file(c: NonNull<Z3_context>, f: NonNull<Z3_fixedpoint>, s: NonNull<Z3_string>) -> *mut Z3_ast_vector;
 }
 /// The following utilities allows adding user-defined domains.
 pub type Z3_fixedpoint_reduce_assign_callback_fptr = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut ::std::os::raw::c_void,
-        arg2: Z3_func_decl,
+        arg2: NonNull<Z3_func_decl>,
         arg3: ::std::os::raw::c_uint,
         arg4: *const Z3_ast,
         arg5: ::std::os::raw::c_uint,
@@ -6484,7 +6365,7 @@ pub type Z3_fixedpoint_reduce_assign_callback_fptr = ::std::option::Option<
 pub type Z3_fixedpoint_reduce_app_callback_fptr = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut ::std::os::raw::c_void,
-        arg2: Z3_func_decl,
+        arg2: NonNull<Z3_func_decl>,
         arg3: ::std::os::raw::c_uint,
         arg4: *const Z3_ast,
         arg5: *mut Z3_ast,
@@ -6492,29 +6373,29 @@ pub type Z3_fixedpoint_reduce_app_callback_fptr = ::std::option::Option<
 >;
 extern "C" {
     /// Initialize the context with a user-defined state.
-    pub fn Z3_fixedpoint_init(c: Z3_context, d: Z3_fixedpoint, state: *mut ::std::os::raw::c_void);
+    pub fn Z3_fixedpoint_init(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>, state: *mut ::std::os::raw::c_void);
 
     /// Register a callback to destructive updates.
     ///
     /// Registers are identified with terms encoded as fresh constants,
     pub fn Z3_fixedpoint_set_reduce_assign_callback(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        cb: Z3_fixedpoint_reduce_assign_callback_fptr,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        cb: NonNull<Z3_fixedpoint_reduce_assign_callback_fptr>,
     );
 
     /// Register a callback for building terms based on the relational operators.
     pub fn Z3_fixedpoint_set_reduce_app_callback(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        cb: Z3_fixedpoint_reduce_app_callback_fptr,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        cb: NonNull<Z3_fixedpoint_reduce_app_callback_fptr>,
     );
 }
 
 pub type Z3_fixedpoint_new_lemma_eh = ::std::option::Option<
     unsafe extern "C" fn(
         state: *mut ::std::os::raw::c_void,
-        lemma: Z3_ast,
+        lemma: NonNull<Z3_ast>,
         level: ::std::os::raw::c_uint,
     ),
 >;
@@ -6523,21 +6404,23 @@ pub type Z3_fixedpoint_predecessor_eh =
 pub type Z3_fixedpoint_unfold_eh =
     ::std::option::Option<unsafe extern "C" fn(state: *mut ::std::os::raw::c_void)>;
 
+#[cfg_attr(windows, link(name = "libz3"))]
+#[cfg_attr(not(windows), link(name = "z3"))]
 extern "C" {
     /// Set export callback for lemmas.
     pub fn Z3_fixedpoint_add_callback(
-        ctx: Z3_context,
-        f: Z3_fixedpoint,
+        ctx: NonNull<Z3_context>,
+        f: NonNull<Z3_fixedpoint>,
         state: *mut ::std::os::raw::c_void,
-        new_lemma_eh: Z3_fixedpoint_new_lemma_eh,
-        predecessor_eh: Z3_fixedpoint_predecessor_eh,
-        unfold_eh: Z3_fixedpoint_unfold_eh,
+        new_lemma_eh: NonNull<Z3_fixedpoint_new_lemma_eh>,
+        predecessor_eh: NonNull<Z3_fixedpoint_predecessor_eh>,
+        unfold_eh: NonNull<Z3_fixedpoint_unfold_eh>,
     );
 
     pub fn Z3_fixedpoint_add_constraint(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        e: Z3_ast,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        e: NonNull<Z3_ast>,
         lvl: ::std::os::raw::c_uint,
     );
 
@@ -6547,13 +6430,13 @@ extern "C" {
     /// and [`Z3_optimize_dec_ref`] to manage optimize objects,
     /// even if the context was created using [`Z3_mk_context`]
     /// instead of [`Z3_mk_context_rc`].
-    pub fn Z3_mk_optimize(c: Z3_context) -> Z3_optimize;
+    pub fn Z3_mk_optimize(c: NonNull<Z3_context>) -> *mut Z3_optimize;
 
     /// Increment the reference counter of the given optimize context
-    pub fn Z3_optimize_inc_ref(c: Z3_context, d: Z3_optimize);
+    pub fn Z3_optimize_inc_ref(c: NonNull<Z3_context>, d: NonNull<Z3_optimize>);
 
     /// Decrement the reference counter of the given optimize context.
-    pub fn Z3_optimize_dec_ref(c: Z3_context, d: Z3_optimize);
+    pub fn Z3_optimize_dec_ref(c: NonNull<Z3_context>, d: NonNull<Z3_optimize>);
 
     /// Assert hard constraint to the optimization context.
     ///
@@ -6561,7 +6444,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_assert_and_track`]
     /// - [`Z3_optimize_assert_soft`]
-    pub fn Z3_optimize_assert(c: Z3_context, o: Z3_optimize, a: Z3_ast);
+    pub fn Z3_optimize_assert(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, a: NonNull<Z3_ast>);
 
     /// Assert tracked hard constraint to the optimization context.
     ///
@@ -6569,7 +6452,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_assert`]
     /// - [`Z3_optimize_assert_soft`]
-    pub fn Z3_optimize_assert_and_track(c: Z3_context, o: Z3_optimize, a: Z3_ast, t: Z3_ast);
+    pub fn Z3_optimize_assert_and_track(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, a: NonNull<Z3_ast>, t: NonNull<Z3_ast>);
 
     /// Assert soft constraint to the optimization context.
     /// - `c`: - context
@@ -6583,11 +6466,11 @@ extern "C" {
     /// - [`Z3_optimize_assert`]
     /// - [`Z3_optimize_assert_and_track`]
     pub fn Z3_optimize_assert_soft(
-        c: Z3_context,
-        o: Z3_optimize,
-        a: Z3_ast,
-        weight: Z3_string,
-        id: Z3_symbol,
+        c: NonNull<Z3_context>,
+        o: NonNull<Z3_optimize>,
+        a: NonNull<Z3_ast>,
+        weight: NonNull<Z3_string>,
+        id: NonNull<Z3_symbol>,
     ) -> ::std::os::raw::c_uint;
 
     /// Add a maximization constraint.
@@ -6598,7 +6481,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_optimize_minimize`]
-    pub fn Z3_optimize_maximize(c: Z3_context, o: Z3_optimize, t: Z3_ast)
+    pub fn Z3_optimize_maximize(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, t: NonNull<Z3_ast>)
         -> ::std::os::raw::c_uint;
 
     /// Add a minimization constraint.
@@ -6609,7 +6492,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_optimize_maximize`]
-    pub fn Z3_optimize_minimize(c: Z3_context, o: Z3_optimize, t: Z3_ast)
+    pub fn Z3_optimize_minimize(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, t: NonNull<Z3_ast>)
         -> ::std::os::raw::c_uint;
 
     /// Create a backtracking point.
@@ -6620,7 +6503,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_optimize_pop`]
-    pub fn Z3_optimize_push(c: Z3_context, d: Z3_optimize);
+    pub fn Z3_optimize_push(c: NonNull<Z3_context>, d: NonNull<Z3_optimize>);
 
     /// Backtrack one level.
     ///
@@ -6631,7 +6514,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_optimize_push`]
-    pub fn Z3_optimize_pop(c: Z3_context, d: Z3_optimize);
+    pub fn Z3_optimize_pop(c: NonNull<Z3_context>, d: NonNull<Z3_optimize>);
 
     /// Check consistency and produce optimal values.
     ///
@@ -6647,28 +6530,28 @@ extern "C" {
     /// - [`Z3_optimize_get_statistics`]
     /// - [`Z3_optimize_get_unsat_core`]
     pub fn Z3_optimize_check(
-        c: Z3_context,
-        o: Z3_optimize,
+        c: NonNull<Z3_context>,
+        o: NonNull<Z3_optimize>,
         num_assumptions: ::std::os::raw::c_uint,
         assumptions: *const Z3_ast,
-    ) -> Z3_lbool;
+    ) -> *mut Z3_lbool;
 
     /// Retrieve a string that describes the last status returned by [`Z3_optimize_check`].
     ///
     /// Use this method when [`Z3_optimize_check`] returns `Z3_L_UNDEF`.
-    pub fn Z3_optimize_get_reason_unknown(c: Z3_context, d: Z3_optimize) -> Z3_string;
+    pub fn Z3_optimize_get_reason_unknown(c: NonNull<Z3_context>, d: NonNull<Z3_optimize>) -> Z3_string;
 
     /// Retrieve the model for the last [`Z3_optimize_check`].
     ///
     /// The error handler is invoked if a model is not available because
     /// the commands above were not invoked for the given optimization
     /// solver, or if the result was `Z3_L_FALSE`.
-    pub fn Z3_optimize_get_model(c: Z3_context, o: Z3_optimize) -> Z3_model;
+    pub fn Z3_optimize_get_model(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>) -> *mut Z3_model;
 
     /// Retrieve the unsat core for the last [`Z3_optimize_check`].
     ///
     /// The unsat core is a subset of the assumptions `a`.
-    pub fn Z3_optimize_get_unsat_core(c: Z3_context, o: Z3_optimize) -> Z3_ast_vector;
+    pub fn Z3_optimize_get_unsat_core(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>) -> *mut Z3_ast_vector;
 
     /// Set parameters on optimization context.
     ///
@@ -6680,7 +6563,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_get_help`]
     /// - [`Z3_optimize_get_param_descrs`]
-    pub fn Z3_optimize_set_params(c: Z3_context, o: Z3_optimize, p: Z3_params);
+    pub fn Z3_optimize_set_params(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, p: NonNull<Z3_params>);
 
     /// Return the parameter description set for the given optimize object.
     ///
@@ -6691,7 +6574,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_get_help`]
     /// - [`Z3_optimize_set_params`]
-    pub fn Z3_optimize_get_param_descrs(c: Z3_context, o: Z3_optimize) -> Z3_param_descrs;
+    pub fn Z3_optimize_get_param_descrs(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>) -> *mut Z3_param_descrs;
 
     /// Retrieve lower bound value or approximation for the i'th optimization objective.
     ///
@@ -6705,10 +6588,10 @@ extern "C" {
     /// - [`Z3_optimize_get_lower_as_vector`]
     /// - [`Z3_optimize_get_upper_as_vector`]
     pub fn Z3_optimize_get_lower(
-        c: Z3_context,
-        o: Z3_optimize,
+        c: NonNull<Z3_context>,
+        o: NonNull<Z3_optimize>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Retrieve upper bound value or approximation for the i'th optimization objective.
     ///
@@ -6722,10 +6605,10 @@ extern "C" {
     /// - [`Z3_optimize_get_lower_as_vector`]
     /// - [`Z3_optimize_get_upper_as_vector`]
     pub fn Z3_optimize_get_upper(
-        c: Z3_context,
-        o: Z3_optimize,
+        c: NonNull<Z3_context>,
+        o: NonNull<Z3_optimize>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Retrieve lower bound value or approximation for the i'th optimization objective.
     /// The returned vector is of length 3. It always contains numerals.
@@ -6742,10 +6625,10 @@ extern "C" {
     /// - [`Z3_optimize_get_upper`]
     /// - [`Z3_optimize_get_upper_as_vector`]
     pub fn Z3_optimize_get_lower_as_vector(
-        c: Z3_context,
-        o: Z3_optimize,
+        c: NonNull<Z3_context>,
+        o: NonNull<Z3_optimize>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_ast_vector;
+    ) -> *mut Z3_ast_vector;
 
     /// Retrieve upper bound value or approximation for the i'th optimization objective.
     ///
@@ -6759,10 +6642,10 @@ extern "C" {
     /// - [`Z3_optimize_get_upper`]
     /// - [`Z3_optimize_get_lower_as_vector`]
     pub fn Z3_optimize_get_upper_as_vector(
-        c: Z3_context,
-        o: Z3_optimize,
+        c: NonNull<Z3_context>,
+        o: NonNull<Z3_optimize>,
         idx: ::std::os::raw::c_uint,
-    ) -> Z3_ast_vector;
+    ) -> *mut Z3_ast_vector;
 
     /// Print the current context as a string.
     /// - `c`: - context.
@@ -6772,7 +6655,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_from_file`]
     /// - [`Z3_optimize_from_string`]
-    pub fn Z3_optimize_to_string(c: Z3_context, o: Z3_optimize) -> Z3_string;
+    pub fn Z3_optimize_to_string(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>) -> Z3_string;
 
     /// Parse an SMT-LIB2 string with assertions,
     /// soft constraints and optimization objectives.
@@ -6786,7 +6669,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_from_file`]
     /// - [`Z3_optimize_to_string`]
-    pub fn Z3_optimize_from_string(c: Z3_context, o: Z3_optimize, s: Z3_string);
+    pub fn Z3_optimize_from_string(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, s: NonNull<Z3_string>);
 
     /// Parse an SMT-LIB2 file with assertions,
     /// soft constraints and optimization objectives.
@@ -6800,7 +6683,7 @@ extern "C" {
     ///
     /// - [`Z3_optimize_from_string`]
     /// - [`Z3_optimize_to_string`]
-    pub fn Z3_optimize_from_file(c: Z3_context, o: Z3_optimize, s: Z3_string);
+    pub fn Z3_optimize_from_file(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>, s: NonNull<Z3_string>);
 
     /// Return a string containing a description of parameters accepted by optimize.
     ///
@@ -6808,13 +6691,13 @@ extern "C" {
     ///
     /// - [`Z3_optimize_get_param_descrs`]
     /// - [`Z3_optimize_set_params`]
-    pub fn Z3_optimize_get_help(c: Z3_context, t: Z3_optimize) -> Z3_string;
+    pub fn Z3_optimize_get_help(c: NonNull<Z3_context>, t: NonNull<Z3_optimize>) -> Z3_string;
 
     /// Retrieve statistics information from the last call to [`Z3_optimize_check`]
-    pub fn Z3_optimize_get_statistics(c: Z3_context, d: Z3_optimize) -> Z3_stats;
+    pub fn Z3_optimize_get_statistics(c: NonNull<Z3_context>, d: NonNull<Z3_optimize>) -> *mut Z3_stats;
 
     /// Return the set of asserted formulas on the optimization context.
-    pub fn Z3_optimize_get_assertions(c: Z3_context, o: Z3_optimize) -> Z3_ast_vector;
+    pub fn Z3_optimize_get_assertions(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>) -> *mut Z3_ast_vector;
 
     /// Return objectives on the optimization context.
     /// If the objective function is a max-sat objective it is returned
@@ -6822,7 +6705,7 @@ extern "C" {
     /// If the objective function is entered as a maximization objective, then return
     /// the corresponding minimization objective. In this way the resulting objective
     /// function is always returned as a minimization objective.
-    pub fn Z3_optimize_get_objectives(c: Z3_context, o: Z3_optimize) -> Z3_ast_vector;
+    pub fn Z3_optimize_get_objectives(c: NonNull<Z3_context>, o: NonNull<Z3_optimize>) -> *mut Z3_ast_vector;
 
     /// Create the `RoundingMode` sort.
     ///
@@ -6836,7 +6719,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_round_toward_negative`] or [`Z3_mk_fpa_rtn`]
     /// - [`Z3_mk_fpa_round_toward_positive`] or [`Z3_mk_fpa_rtp`]
     /// - [`Z3_mk_fpa_round_toward_zero`] or [`Z3_mk_fpa_rtz`]
-    pub fn Z3_mk_fpa_rounding_mode_sort(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_rounding_mode_sort(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create a numeral of `RoundingMode` sort which represents the `NearestTiesToEven` rounding mode.
     ///
@@ -6851,7 +6734,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_round_toward_negative`]
     /// - [`Z3_mk_fpa_round_toward_positive`]
     /// - [`Z3_mk_fpa_round_toward_zero`]
-    pub fn Z3_mk_fpa_round_nearest_ties_to_even(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_round_nearest_ties_to_even(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `NearestTiesToEven` rounding mode.
     ///
@@ -6866,7 +6749,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_rtn`]
     /// - [`Z3_mk_fpa_rtp`]
     /// - [`Z3_mk_fpa_rtz`]
-    pub fn Z3_mk_fpa_rne(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_rne(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `NearestTiesToAway` rounding mode.
     ///
@@ -6881,7 +6764,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_round_toward_negative`]
     /// - [`Z3_mk_fpa_round_toward_positive`]
     /// - [`Z3_mk_fpa_round_toward_zero`]
-    pub fn Z3_mk_fpa_round_nearest_ties_to_away(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_round_nearest_ties_to_away(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `NearestTiesToAway` rounding mode.
     ///
@@ -6896,7 +6779,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_rtn`]
     /// - [`Z3_mk_fpa_rtp`]
     /// - [`Z3_mk_fpa_rtz`]
-    pub fn Z3_mk_fpa_rna(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_rna(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `TowardPositive` rounding mode.
     ///
@@ -6911,7 +6794,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_round_nearest_ties_to_even`]
     /// - [`Z3_mk_fpa_round_toward_negative`]
     /// - [`Z3_mk_fpa_round_toward_zero`]
-    pub fn Z3_mk_fpa_round_toward_positive(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_round_toward_positive(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `TowardPositive` rounding mode.
     ///
@@ -6926,7 +6809,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_rne`]
     /// - [`Z3_mk_fpa_rtn`]
     /// - [`Z3_mk_fpa_rtz`]
-    pub fn Z3_mk_fpa_rtp(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_rtp(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `TowardNegative` rounding mode.
     ///
@@ -6941,7 +6824,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_round_nearest_ties_to_even`]
     /// - [`Z3_mk_fpa_round_toward_positive`]
     /// - [`Z3_mk_fpa_round_toward_zero`]
-    pub fn Z3_mk_fpa_round_toward_negative(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_round_toward_negative(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `TowardNegative` rounding mode.
     ///
@@ -6956,7 +6839,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_rne`]
     /// - [`Z3_mk_fpa_rtp`]
     /// - [`Z3_mk_fpa_rtz`]
-    pub fn Z3_mk_fpa_rtn(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_rtn(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `TowardZero` rounding mode.
     ///
@@ -6971,7 +6854,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_round_nearest_ties_to_even`]
     /// - [`Z3_mk_fpa_round_toward_negative`]
     /// - [`Z3_mk_fpa_round_toward_positive`]
-    pub fn Z3_mk_fpa_round_toward_zero(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_round_toward_zero(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a numeral of `RoundingMode` sort which represents the `TowardZero` rounding mode.
     ///
@@ -6986,7 +6869,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_rne`]
     /// - [`Z3_mk_fpa_rtn`]
     /// - [`Z3_mk_fpa_rtp`]
-    pub fn Z3_mk_fpa_rtz(c: Z3_context) -> Z3_ast;
+    pub fn Z3_mk_fpa_rtz(c: NonNull<Z3_context>) -> *mut Z3_ast;
 
     /// Create a `FloatingPoint` sort.
     ///
@@ -7003,10 +6886,10 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_double`] or [`Z3_mk_fpa_sort_64`]
     /// - [`Z3_mk_fpa_sort_quadruple`] or [`Z3_mk_fpa_sort_128`]
     pub fn Z3_mk_fpa_sort(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         ebits: ::std::os::raw::c_uint,
         sbits: ::std::os::raw::c_uint,
-    ) -> Z3_sort;
+    ) -> *mut Z3_sort;
 
     /// Create the half-precision (16-bit) `FloatingPoint` sort.
     ///
@@ -7019,7 +6902,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_single`]
     /// - [`Z3_mk_fpa_sort_double`]
     /// - [`Z3_mk_fpa_sort_quadruple`]
-    pub fn Z3_mk_fpa_sort_half(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_half(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the half-precision (16-bit) `FloatingPoint` sort.
     ///
@@ -7032,7 +6915,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_32`]
     /// - [`Z3_mk_fpa_sort_64`]
     /// - [`Z3_mk_fpa_sort_128`]
-    pub fn Z3_mk_fpa_sort_16(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_16(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the single-precision (32-bit) `FloatingPoint` sort.
     ///
@@ -7045,7 +6928,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_half`]
     /// - [`Z3_mk_fpa_sort_double`]
     /// - [`Z3_mk_fpa_sort_quadruple`]
-    pub fn Z3_mk_fpa_sort_single(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_single(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the single-precision (32-bit) `FloatingPoint` sort.
     ///
@@ -7058,7 +6941,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_16`]
     /// - [`Z3_mk_fpa_sort_64`]
     /// - [`Z3_mk_fpa_sort_128`]
-    pub fn Z3_mk_fpa_sort_32(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_32(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the double-precision (64-bit) `FloatingPoint` sort.
     ///
@@ -7071,7 +6954,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_half`]
     /// - [`Z3_mk_fpa_sort_single`]
     /// - [`Z3_mk_fpa_sort_quadruple`]
-    pub fn Z3_mk_fpa_sort_double(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_double(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the double-precision (64-bit) `FloatingPoint` sort.
     ///
@@ -7084,7 +6967,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_16`]
     /// - [`Z3_mk_fpa_sort_32`]
     /// - [`Z3_mk_fpa_sort_128`]
-    pub fn Z3_mk_fpa_sort_64(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_64(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the quadruple-precision (128-bit) `FloatingPoint` sort.
     ///
@@ -7097,7 +6980,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_half`]
     /// - [`Z3_mk_fpa_sort_single`]
     /// - [`Z3_mk_fpa_sort_double`]
-    pub fn Z3_mk_fpa_sort_quadruple(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_quadruple(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create the quadruple-precision (128-bit) `FloatingPoint` sort.
     ///
@@ -7110,7 +6993,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_sort_16`]
     /// - [`Z3_mk_fpa_sort_32`]
     /// - [`Z3_mk_fpa_sort_64`]
-    pub fn Z3_mk_fpa_sort_128(c: Z3_context) -> Z3_sort;
+    pub fn Z3_mk_fpa_sort_128(c: NonNull<Z3_context>) -> *mut Z3_sort;
 
     /// Create a floating-point NaN of sort `s`.
     ///
@@ -7122,7 +7005,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_inf`]
     /// - [`Z3_mk_fpa_is_nan`]
     /// - [`Z3_mk_fpa_zero`]
-    pub fn Z3_mk_fpa_nan(c: Z3_context, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_nan(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a floating-point infinity of sort `s`.
     ///
@@ -7137,7 +7020,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_infinite`]
     /// - [`Z3_mk_fpa_nan`]
     /// - [`Z3_mk_fpa_zero`]
-    pub fn Z3_mk_fpa_inf(c: Z3_context, s: Z3_sort, negative: bool) -> Z3_ast;
+    pub fn Z3_mk_fpa_inf(c: NonNull<Z3_context>, s: NonNull<Z3_sort>, negative: bool) -> *mut Z3_ast;
 
     /// Create a floating-point zero of sort `s`.
     ///
@@ -7152,7 +7035,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_inf`]
     /// - [`Z3_mk_fpa_is_zero`]
     /// - [`Z3_mk_fpa_nan`]
-    pub fn Z3_mk_fpa_zero(c: Z3_context, s: Z3_sort, negative: bool) -> Z3_ast;
+    pub fn Z3_mk_fpa_zero(c: NonNull<Z3_context>, s: NonNull<Z3_sort>, negative: bool) -> *mut Z3_ast;
 
     /// Create an expression of `FloatingPoint` sort from three bit-vector expressions.
     ///
@@ -7175,7 +7058,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_numeral_int_uint`]
     /// - [`Z3_mk_fpa_numeral_int64_uint64`]
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_fpa_fp(c: Z3_context, sgn: Z3_ast, exp: Z3_ast, sig: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_fp(c: NonNull<Z3_context>, sgn: NonNull<Z3_ast>, exp: NonNull<Z3_ast>, sig: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create a numeral of `FloatingPoint` sort from a float.
     ///
@@ -7196,7 +7079,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_numeral_int_uint`]
     /// - [`Z3_mk_fpa_numeral_int64_uint64`]
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_fpa_numeral_float(c: Z3_context, v: f32, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_numeral_float(c: NonNull<Z3_context>, v: f32, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a numeral of `FloatingPoint` sort from a double.
     ///
@@ -7217,7 +7100,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_numeral_int_uint`]
     /// - [`Z3_mk_fpa_numeral_int64_uint64`]
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_fpa_numeral_double(c: Z3_context, v: f64, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_numeral_double(c: NonNull<Z3_context>, v: f64, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a numeral of `FloatingPoint` sort from a signed integer.
     ///
@@ -7235,7 +7118,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_numeral_int_uint`]
     /// - [`Z3_mk_fpa_numeral_int64_uint64`]
     /// - [`Z3_mk_numeral`]
-    pub fn Z3_mk_fpa_numeral_int(c: Z3_context, v: ::std::os::raw::c_int, ty: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_numeral_int(c: NonNull<Z3_context>, v: ::std::os::raw::c_int, ty: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Create a numeral of `FloatingPoint` sort from a sign bit and two integers.
     ///
@@ -7256,12 +7139,12 @@ extern "C" {
     /// - [`Z3_mk_fpa_numeral_int64_uint64`]
     /// - [`Z3_mk_numeral`]
     pub fn Z3_mk_fpa_numeral_int_uint(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         sgn: bool,
         exp: ::std::os::raw::c_int,
         sig: ::std::os::raw::c_uint,
-        ty: Z3_sort,
-    ) -> Z3_ast;
+        ty: NonNull<Z3_sort>,
+    ) -> *mut Z3_ast;
 
     /// Create a numeral of `FloatingPoint` sort from a sign bit and two 64-bit integers.
     ///
@@ -7282,12 +7165,12 @@ extern "C" {
     /// - [`Z3_mk_fpa_numeral_int_uint`]
     /// - [`Z3_mk_numeral`]
     pub fn Z3_mk_fpa_numeral_int64_uint64(
-        c: Z3_context,
+        c: NonNull<Z3_context>,
         sgn: bool,
         exp: i64,
         sig: u64,
-        ty: Z3_sort,
-    ) -> Z3_ast;
+        ty: NonNull<Z3_sort>,
+    ) -> *mut Z3_ast;
 
     /// Floating-point absolute value
     ///
@@ -7299,7 +7182,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_negative`]
     /// - [`Z3_mk_fpa_is_positive`]
     /// - [`Z3_mk_fpa_neg`]
-    pub fn Z3_mk_fpa_abs(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_abs(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point negation
     ///
@@ -7311,7 +7194,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_abs`]
     /// - [`Z3_mk_fpa_is_negative`]
     /// - [`Z3_mk_fpa_is_positive`]
-    pub fn Z3_mk_fpa_neg(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_neg(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point addition
     ///
@@ -7321,7 +7204,7 @@ extern "C" {
     /// - `t2`: term of `FloatingPoint` sort
     ///
     /// `rm` must be of `RoundingMode` sort, `t1` and `t2` must have the same `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_add(c: Z3_context, rm: Z3_ast, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_add(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point subtraction
     ///
@@ -7331,7 +7214,7 @@ extern "C" {
     /// - `t2`: term of `FloatingPoint` sort
     ///
     /// `rm` must be of `RoundingMode` sort, `t1` and `t2` must have the same `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_sub(c: Z3_context, rm: Z3_ast, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_sub(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point multiplication
     ///
@@ -7341,7 +7224,7 @@ extern "C" {
     /// - `t2`: term of `FloatingPoint` sort
     ///
     /// `rm` must be of `RoundingMode` sort, `t1` and `t2` must have the same `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_mul(c: Z3_context, rm: Z3_ast, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_mul(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point division
     ///
@@ -7351,7 +7234,7 @@ extern "C" {
     /// - `t2`: term of `FloatingPoint` sort
     ///
     /// The nodes `rm` must be of `RoundingMode` sort, `t1` and `t2` must have the same `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_div(c: Z3_context, rm: Z3_ast, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_div(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point fused multiply-add.
     ///
@@ -7364,7 +7247,7 @@ extern "C" {
     /// The result is round((t1 * t2) + t3)
     ///
     /// `rm` must be of `RoundingMode` sort, `t1`, `t2`, and `t3` must have the same `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_fma(c: Z3_context, rm: Z3_ast, t1: Z3_ast, t2: Z3_ast, t3: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_fma(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>, t3: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point square root
     ///
@@ -7373,7 +7256,7 @@ extern "C" {
     /// - `t`: term of `FloatingPoint` sort
     ///
     /// `rm` must be of `RoundingMode` sort, `t` must have `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_sqrt(c: Z3_context, rm: Z3_ast, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_sqrt(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point remainder
     ///
@@ -7382,7 +7265,7 @@ extern "C" {
     /// - `t2`: term of `FloatingPoint` sort
     ///
     /// `t1` and `t2` must have the same `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_rem(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_rem(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point roundToIntegral. Rounds a floating-point number to
     /// the closest integer, again represented as a floating-point number.
@@ -7392,7 +7275,7 @@ extern "C" {
     /// - `t`: term of `FloatingPoint` sort
     ///
     /// `t` must be of `FloatingPoint` sort.
-    pub fn Z3_mk_fpa_round_to_integral(c: Z3_context, rm: Z3_ast, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_round_to_integral(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Minimum of floating-point numbers.
     ///
@@ -7405,7 +7288,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_fpa_max`]
-    pub fn Z3_mk_fpa_min(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_min(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Maximum of floating-point numbers.
     ///
@@ -7418,7 +7301,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_mk_fpa_min`]
-    pub fn Z3_mk_fpa_max(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_max(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point less than or equal.
     ///
@@ -7434,7 +7317,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_geq`]
     /// - [`Z3_mk_fpa_gt`]
     /// - [`Z3_mk_fpa_lt`]
-    pub fn Z3_mk_fpa_leq(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_leq(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point less than.
     ///
@@ -7450,7 +7333,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_geq`]
     /// - [`Z3_mk_fpa_gt`]
     /// - [`Z3_mk_fpa_leq`]
-    pub fn Z3_mk_fpa_lt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_lt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point greater than or equal.
     ///
@@ -7466,7 +7349,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_gt`]
     /// - [`Z3_mk_fpa_leq`]
     /// - [`Z3_mk_fpa_lt`]
-    pub fn Z3_mk_fpa_geq(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_geq(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point greater than.
     ///
@@ -7482,7 +7365,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_geq`]
     /// - [`Z3_mk_fpa_leq`]
     /// - [`Z3_mk_fpa_lt`]
-    pub fn Z3_mk_fpa_gt(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_gt(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Floating-point equality.
     ///
@@ -7500,7 +7383,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_gt`]
     /// - [`Z3_mk_fpa_leq`]
     /// - [`Z3_mk_fpa_lt`]
-    pub fn Z3_mk_fpa_eq(c: Z3_context, t1: Z3_ast, t2: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_eq(c: NonNull<Z3_context>, t1: NonNull<Z3_ast>, t2: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a normal floating-point number.
     ///
@@ -7515,7 +7398,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_nan`]
     /// - [`Z3_mk_fpa_is_subnormal`]
     /// - [`Z3_mk_fpa_is_zero`]
-    pub fn Z3_mk_fpa_is_normal(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_normal(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a subnormal floating-point number.
     ///
@@ -7530,7 +7413,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_nan`]
     /// - [`Z3_mk_fpa_is_normal`]
     /// - [`Z3_mk_fpa_is_zero`]
-    pub fn Z3_mk_fpa_is_subnormal(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_subnormal(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a floating-point number with zero value, i.e., +zero or -zero.
     ///
@@ -7547,7 +7430,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_subnormal`]
     /// - [`Z3_mk_fpa_is_zero`]
     /// - [`Z3_mk_fpa_zero`]
-    pub fn Z3_mk_fpa_is_zero(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_zero(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a floating-point number representing +oo or -oo.
     ///
@@ -7564,7 +7447,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_normal`]
     /// - [`Z3_mk_fpa_is_subnormal`]
     /// - [`Z3_mk_fpa_is_zero`]
-    pub fn Z3_mk_fpa_is_infinite(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_infinite(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a NaN.
     ///
@@ -7580,7 +7463,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_is_subnormal`]
     /// - [`Z3_mk_fpa_is_zero`]
     /// - [`Z3_mk_fpa_nan`]
-    pub fn Z3_mk_fpa_is_nan(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_nan(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a negative floating-point number.
     ///
@@ -7594,7 +7477,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_abs`]
     /// - [`Z3_mk_fpa_is_positive`]
     /// - [`Z3_mk_fpa_neg`]
-    pub fn Z3_mk_fpa_is_negative(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_negative(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Predicate indicating whether `t` is a positive floating-point number.
     ///
@@ -7608,7 +7491,7 @@ extern "C" {
     /// - [`Z3_mk_fpa_abs`]
     /// - [`Z3_mk_fpa_is_negative`]
     /// - [`Z3_mk_fpa_neg`]
-    pub fn Z3_mk_fpa_is_positive(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_is_positive(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Conversion of a single IEEE 754-2008 bit-vector into a floating-point number.
     ///
@@ -7622,7 +7505,7 @@ extern "C" {
     /// `s` must be a `FloatingPoint` sort, `t` must be of bit-vector sort, and the bit-vector
     /// size of `bv` must be equal to ebits+sbits of `s`. The format of the bit-vector is
     /// as defined by the IEEE 754-2008 interchange format.
-    pub fn Z3_mk_fpa_to_fp_bv(c: Z3_context, bv: Z3_ast, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_fp_bv(c: NonNull<Z3_context>, bv: NonNull<Z3_ast>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Conversion of a `FloatingPoint` term into another term of different `FloatingPoint` sort.
     ///
@@ -7637,7 +7520,7 @@ extern "C" {
     ///
     /// `s` must be a `FloatingPoint` sort, `rm` must be of `RoundingMode` sort, `t` must be
     /// of floating-point sort.
-    pub fn Z3_mk_fpa_to_fp_float(c: Z3_context, rm: Z3_ast, t: Z3_ast, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_fp_float(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t: NonNull<Z3_ast>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Conversion of a term of real sort into a term of `FloatingPoint` sort.
     ///
@@ -7652,7 +7535,7 @@ extern "C" {
     ///
     /// `s` must be a `FloatingPoint` sort, `rm` must be of `RoundingMode` sort, `t` must be of
     /// Real sort.
-    pub fn Z3_mk_fpa_to_fp_real(c: Z3_context, rm: Z3_ast, t: Z3_ast, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_fp_real(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t: NonNull<Z3_ast>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Conversion of a 2's complement signed bit-vector term into a term of `FloatingPoint` sort.
     ///
@@ -7668,7 +7551,7 @@ extern "C" {
     ///
     /// `s` must be a `FloatingPoint` sort, `rm` must be of `RoundingMode` sort, `t` must be
     /// of bit-vector sort.
-    pub fn Z3_mk_fpa_to_fp_signed(c: Z3_context, rm: Z3_ast, t: Z3_ast, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_fp_signed(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t: NonNull<Z3_ast>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Conversion of a 2's complement unsigned bit-vector term into a term of `FloatingPoint` sort.
     ///
@@ -7684,7 +7567,7 @@ extern "C" {
     ///
     /// `s` must be a `FloatingPoint` sort, `rm` must be of `RoundingMode` sort, `t` must be
     /// of bit-vector sort.
-    pub fn Z3_mk_fpa_to_fp_unsigned(c: Z3_context, rm: Z3_ast, t: Z3_ast, s: Z3_sort) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_fp_unsigned(c: NonNull<Z3_context>, rm: NonNull<Z3_ast>, t: NonNull<Z3_ast>, s: NonNull<Z3_sort>) -> *mut Z3_ast;
 
     /// Conversion of a floating-point term into an unsigned bit-vector.
     ///
@@ -7697,11 +7580,11 @@ extern "C" {
     /// - `t`: term of `FloatingPoint` sort
     /// - `sz`: size of the resulting bit-vector
     pub fn Z3_mk_fpa_to_ubv(
-        c: Z3_context,
-        rm: Z3_ast,
-        t: Z3_ast,
+        c: NonNull<Z3_context>,
+        rm: NonNull<Z3_ast>,
+        t: NonNull<Z3_ast>,
         sz: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Conversion of a floating-point term into a signed bit-vector.
     ///
@@ -7714,11 +7597,11 @@ extern "C" {
     /// - `t`: term of `FloatingPoint` sort
     /// - `sz`: size of the resulting bit-vector
     pub fn Z3_mk_fpa_to_sbv(
-        c: Z3_context,
-        rm: Z3_ast,
-        t: Z3_ast,
+        c: NonNull<Z3_context>,
+        rm: NonNull<Z3_ast>,
+        t: NonNull<Z3_ast>,
         sz: ::std::os::raw::c_uint,
-    ) -> Z3_ast;
+    ) -> *mut Z3_ast;
 
     /// Conversion of a floating-point term into a real-numbered term.
     ///
@@ -7728,7 +7611,7 @@ extern "C" {
     ///
     /// - `c`: logical context
     /// - `t`: term of `FloatingPoint` sort
-    pub fn Z3_mk_fpa_to_real(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_real(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Retrieves the number of bits reserved for the exponent in a `FloatingPoint` sort.
     ///
@@ -7738,7 +7621,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_fpa_get_sbits`]
-    pub fn Z3_fpa_get_ebits(c: Z3_context, s: Z3_sort) -> ::std::os::raw::c_uint;
+    pub fn Z3_fpa_get_ebits(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> ::std::os::raw::c_uint;
 
     /// Retrieves the number of bits reserved for the significand in a `FloatingPoint` sort.
     ///
@@ -7748,7 +7631,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_fpa_get_ebits`]
-    pub fn Z3_fpa_get_sbits(c: Z3_context, s: Z3_sort) -> ::std::os::raw::c_uint;
+    pub fn Z3_fpa_get_sbits(c: NonNull<Z3_context>, s: NonNull<Z3_sort>) -> ::std::os::raw::c_uint;
 
     /// Checks whether a given floating-point numeral is a NaN.
     ///
@@ -7761,7 +7644,7 @@ extern "C" {
     /// - [`Z3_fpa_is_numeral_normal`]
     /// - [`Z3_fpa_is_numeral_subnormal`]
     /// - [`Z3_fpa_is_numeral_zero`]
-    pub fn Z3_fpa_is_numeral_nan(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_nan(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Checks whether a given floating-point numeral is a +oo or -oo.
     ///
@@ -7774,7 +7657,7 @@ extern "C" {
     /// - [`Z3_fpa_is_numeral_normal`]
     /// - [`Z3_fpa_is_numeral_subnormal`]
     /// - [`Z3_fpa_is_numeral_zero`]
-    pub fn Z3_fpa_is_numeral_inf(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_inf(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Checks whether a given floating-point numeral is +zero or -zero.
     ///
@@ -7787,7 +7670,7 @@ extern "C" {
     /// - [`Z3_fpa_is_numeral_nan`]
     /// - [`Z3_fpa_is_numeral_normal`]
     /// - [`Z3_fpa_is_numeral_subnormal`]
-    pub fn Z3_fpa_is_numeral_zero(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_zero(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Checks whether a given floating-point numeral is normal.
     ///
@@ -7800,7 +7683,7 @@ extern "C" {
     /// - [`Z3_fpa_is_numeral_nan`]
     /// - [`Z3_fpa_is_numeral_subnormal`]
     /// - [`Z3_fpa_is_numeral_zero`]
-    pub fn Z3_fpa_is_numeral_normal(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_normal(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Checks whether a given floating-point numeral is subnormal.
     ///
@@ -7813,7 +7696,7 @@ extern "C" {
     /// - [`Z3_fpa_is_numeral_nan`]
     /// - [`Z3_fpa_is_numeral_normal`]
     /// - [`Z3_fpa_is_numeral_zero`]
-    pub fn Z3_fpa_is_numeral_subnormal(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_subnormal(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Checks whether a given floating-point numeral is positive.
     ///
@@ -7823,7 +7706,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_fpa_is_numeral_negative`]
-    pub fn Z3_fpa_is_numeral_positive(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_positive(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Checks whether a given floating-point numeral is negative.
     ///
@@ -7833,7 +7716,7 @@ extern "C" {
     /// # See also:
     ///
     /// - [`Z3_fpa_is_numeral_positive`]
-    pub fn Z3_fpa_is_numeral_negative(c: Z3_context, t: Z3_ast) -> bool;
+    pub fn Z3_fpa_is_numeral_negative(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> bool;
 
     /// Retrieves the sign of a floating-point literal as a bit-vector expression.
     ///
@@ -7841,7 +7724,7 @@ extern "C" {
     /// - `t`: a floating-point numeral
     ///
     /// Remarks: NaN is an invalid argument.
-    pub fn Z3_fpa_get_numeral_sign_bv(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_fpa_get_numeral_sign_bv(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Retrieves the significand of a floating-point literal as a bit-vector expression.
     ///
@@ -7849,7 +7732,7 @@ extern "C" {
     /// - `t`: a floating-point numeral
     ///
     /// Remarks: NaN is an invalid argument.
-    pub fn Z3_fpa_get_numeral_significand_bv(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_fpa_get_numeral_significand_bv(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Retrieves the sign of a floating-point literal.
     ///
@@ -7860,8 +7743,8 @@ extern "C" {
     /// Remarks: sets `sgn` to 0 if `t` is positive and to 1 otherwise, except for
     /// NaN, which is an invalid argument.
     pub fn Z3_fpa_get_numeral_sign(
-        c: Z3_context,
-        t: Z3_ast,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_ast>,
         sgn: *mut ::std::os::raw::c_int,
     ) -> bool;
 
@@ -7872,7 +7755,7 @@ extern "C" {
     ///
     /// Remarks: The significand `s` is always `0.0 <= s < 2.0`; the resulting string is
     /// long enough to represent the real significand precisely.
-    pub fn Z3_fpa_get_numeral_significand_string(c: Z3_context, t: Z3_ast) -> Z3_string;
+    pub fn Z3_fpa_get_numeral_significand_string(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> Z3_string;
 
     /// Return the significand value of a floating-point numeral as a uint64.
     ///
@@ -7883,7 +7766,7 @@ extern "C" {
     /// Remarks: This function extracts the significand bits in `t`, without the
     /// hidden bit or normalization. Sets the `ErrorCode::InvalidArg` error code if the
     /// significand does not fit into a uint64. NaN is an invalid argument.
-    pub fn Z3_fpa_get_numeral_significand_uint64(c: Z3_context, t: Z3_ast, n: *mut u64) -> bool;
+    pub fn Z3_fpa_get_numeral_significand_uint64(c: NonNull<Z3_context>, t: NonNull<Z3_ast>, n: *mut u64) -> bool;
 
     /// Return the exponent value of a floating-point numeral as a string.
     ///
@@ -7893,7 +7776,7 @@ extern "C" {
     ///
     /// Remarks: This function extracts the exponent in `t`, without normalization.
     /// NaN is an invalid argument.
-    pub fn Z3_fpa_get_numeral_exponent_string(c: Z3_context, t: Z3_ast, biased: bool) -> Z3_string;
+    pub fn Z3_fpa_get_numeral_exponent_string(c: NonNull<Z3_context>, t: NonNull<Z3_ast>, biased: bool) -> Z3_string;
 
     /// Return the exponent value of a floating-point numeral as a signed 64-bit integer
     ///
@@ -7905,8 +7788,8 @@ extern "C" {
     /// Remarks: This function extracts the exponent in `t`, without normalization.
     /// NaN is an invalid argument.
     pub fn Z3_fpa_get_numeral_exponent_int64(
-        c: Z3_context,
-        t: Z3_ast,
+        c: NonNull<Z3_context>,
+        t: NonNull<Z3_ast>,
         n: *mut i64,
         biased: bool,
     ) -> bool;
@@ -7919,7 +7802,7 @@ extern "C" {
     ///
     /// Remarks: This function extracts the exponent in `t`, without normalization.
     /// NaN is an invalid arguments.
-    pub fn Z3_fpa_get_numeral_exponent_bv(c: Z3_context, t: Z3_ast, biased: bool) -> Z3_ast;
+    pub fn Z3_fpa_get_numeral_exponent_bv(c: NonNull<Z3_context>, t: NonNull<Z3_ast>, biased: bool) -> *mut Z3_ast;
 
     /// Conversion of a floating-point term into a bit-vector term in IEEE 754-2008 format.
     ///
@@ -7932,7 +7815,7 @@ extern "C" {
     /// Note that IEEE 754-2008 allows multiple different representations of NaN. This conversion
     /// knows only one NaN and it will always produce the same bit-vector representation of
     /// that NaN.
-    pub fn Z3_mk_fpa_to_ieee_bv(c: Z3_context, t: Z3_ast) -> Z3_ast;
+    pub fn Z3_mk_fpa_to_ieee_bv(c: NonNull<Z3_context>, t: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Conversion of a real-sorted significand and an integer-sorted exponent into a term of `FloatingPoint` sort.
     ///
@@ -7949,12 +7832,12 @@ extern "C" {
     /// `s` must be a `FloatingPoint` sort, `rm` must be of `RoundingMode` sort,
     /// `exp` must be of int sort, `sig` must be of real sort.
     pub fn Z3_mk_fpa_to_fp_int_real(
-        c: Z3_context,
-        rm: Z3_ast,
-        exp: Z3_ast,
-        sig: Z3_ast,
-        s: Z3_sort,
-    ) -> Z3_ast;
+        c: NonNull<Z3_context>,
+        rm: NonNull<Z3_ast>,
+        exp: NonNull<Z3_ast>,
+        sig: NonNull<Z3_ast>,
+        s: NonNull<Z3_sort>,
+    ) -> *mut Z3_ast;
 
     /// Pose a query against the asserted rules at the given level.
     ///
@@ -7969,73 +7852,66 @@ extern "C" {
     ///   calling [`Z3_fixedpoint_get_answer`].
     /// - `Z3_L_UNDEF` if the query was interrupted, timed out or otherwise failed.
     pub fn Z3_fixedpoint_query_from_lvl(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        query: Z3_ast,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        query: NonNull<Z3_ast>,
         lvl: ::std::os::raw::c_uint,
-    ) -> Z3_lbool;
+    ) -> *mut Z3_lbool;
 
     /// Retrieve a bottom-up (from query) sequence of ground facts
     ///
     /// The previous call to [`Z3_fixedpoint_query`]
     /// must have returned `Z3_L_TRUE`.
-    pub fn Z3_fixedpoint_get_ground_sat_answer(c: Z3_context, d: Z3_fixedpoint) -> Z3_ast;
+    pub fn Z3_fixedpoint_get_ground_sat_answer(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>) -> *mut Z3_ast;
 
     /// Obtain the list of rules along the counterexample trace.
-    pub fn Z3_fixedpoint_get_rules_along_trace(c: Z3_context, d: Z3_fixedpoint) -> Z3_ast_vector;
+    pub fn Z3_fixedpoint_get_rules_along_trace(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>) -> *mut Z3_ast_vector;
 
     /// Obtain the list of rules along the counterexample trace.
-    pub fn Z3_fixedpoint_get_rule_names_along_trace(c: Z3_context, d: Z3_fixedpoint) -> Z3_symbol;
+    pub fn Z3_fixedpoint_get_rule_names_along_trace(c: NonNull<Z3_context>, d: NonNull<Z3_fixedpoint>) -> *mut Z3_symbol;
 
     /// Add an assumed invariant of predicate `pred`.
     ///
     /// Note: this functionality is Spacer specific.
     pub fn Z3_fixedpoint_add_invariant(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        pred: Z3_func_decl,
-        property: Z3_ast,
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        pred: NonNull<Z3_func_decl>,
+        property: NonNull<Z3_ast>,
     );
 
     /// Retrieve reachable states of a predicate.
     ///
     /// Note: this functionality is Spacer specific.
     pub fn Z3_fixedpoint_get_reachable(
-        c: Z3_context,
-        d: Z3_fixedpoint,
-        pred: Z3_func_decl,
-    ) -> Z3_ast;
+        c: NonNull<Z3_context>,
+        d: NonNull<Z3_fixedpoint>,
+        pred: NonNull<Z3_func_decl>,
+    ) -> *mut Z3_ast;
 
     /// Project variables given a model
     pub fn Z3_qe_model_project(
-        c: Z3_context,
-        m: Z3_model,
+        c: NonNull<Z3_context>,
+        m: NonNull<Z3_model>,
         num_bounds: ::std::os::raw::c_uint,
         bound: *const Z3_app,
-        body: Z3_ast,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+    ) -> *mut Z3_ast;
 
     /// Project variables given a model
     pub fn Z3_qe_model_project_skolem(
-        c: Z3_context,
-        m: Z3_model,
+        c: NonNull<Z3_context>,
+        m: NonNull<Z3_model>,
         num_bounds: ::std::os::raw::c_uint,
         bound: *const Z3_app,
-        body: Z3_ast,
-        map: Z3_ast_map,
-    ) -> Z3_ast;
+        body: NonNull<Z3_ast>,
+        map: NonNull<Z3_ast_map>,
+    ) -> *mut Z3_ast;
 
     /// Extrapolates a model of a formula
-    pub fn Z3_model_extrapolate(c: Z3_context, m: Z3_model, fml: Z3_ast) -> Z3_ast;
+    pub fn Z3_model_extrapolate(c: NonNull<Z3_context>, m: NonNull<Z3_model>, fml: NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Best-effort quantifier elimination
-    pub fn Z3_qe_lite(c: Z3_context, vars: Z3_ast_vector, body: Z3_ast) -> Z3_ast;
+    pub fn Z3_qe_lite(c: NonNull<Z3_context>, vars: NonNull<Z3_ast_vector>, body: NonNull<Z3_ast>) -> *mut Z3_ast;
 }
 
-#[cfg(not(windows))]
-#[link(name = "z3")]
-extern "C" {}
-
-#[cfg(windows)]
-#[link(name = "libz3")]
-extern "C" {}
