@@ -1,17 +1,18 @@
 use std::ffi::CString;
+use std::ptr::NonNull;
 
 use z3_sys::*;
 
 use crate::{Context, Symbol};
 
 impl Symbol {
-    pub fn as_z3_symbol(&self, ctx: &Context) -> Z3_symbol {
+    pub fn as_z3_symbol(&self, ctx: &Context) -> NonNull<Z3_symbol> {
         match self {
-            Symbol::Int(i) => unsafe { Z3_mk_int_symbol(ctx.z3_ctx, *i as ::std::os::raw::c_int) },
+            Symbol::Int(i) => ctx.check_error_ptr(unsafe { Z3_mk_int_symbol(*ctx, *i as ::std::os::raw::c_int) }).unwrap(),
             Symbol::String(s) => {
                 let ss = CString::new(s.clone()).unwrap();
                 let p = ss.as_ptr();
-                unsafe { Z3_mk_string_symbol(ctx.z3_ctx, p) }
+                ctx.check_error_ptr(unsafe { Z3_mk_string_symbol(ctx.z3_ctx, p) }).unwrap()
             }
         }
     }

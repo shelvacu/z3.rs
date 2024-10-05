@@ -6,14 +6,20 @@ use z3_sys::*;
 
 use std::ops::AddAssign;
 
-use crate::{ast, ast::Ast, Context, Model, Params, SatResult, Solver, Statistics, Symbol};
+use crate::{ast, ast::Ast, Context, Model, Params, SatResult, Statistics, Symbol, make_z3_object};
+
+make_z3_object! {
+    /// (Incremental) solver, possibly specialized by a particular tactic or logic.
+    pub struct Solver<'ctx>
+    where
+        sys_ty; Z3_solver,
+        inc_ref: Z3_solver_inc_ref,
+        dec_ref: Z3_solver_dec_ref,
+        to_str: Z3_solver_to_string,
+    ;
+}
 
 impl<'ctx> Solver<'ctx> {
-    pub(crate) unsafe fn wrap(ctx: &'ctx Context, z3_slv: Z3_solver) -> Solver<'ctx> {
-        Z3_solver_inc_ref(ctx.z3_ctx, z3_slv);
-        Solver { ctx, z3_slv }
-    }
-
     /// Create a new solver. This solver is a "combined solver"
     /// that internally uses a non-incremental (`solver1`) and an
     /// incremental solver (`solver2`). This combined solver changes
@@ -45,44 +51,34 @@ impl<'ctx> Solver<'ctx> {
     /// is not guaranteed to satisfy quantified assertions.
     ///
     /// [model construction is enabled]: crate::Config::set_model_generation
-    pub fn new(ctx: &'ctx Context) -> Solver<'ctx> {
-        unsafe { Self::wrap(ctx, Z3_mk_solver(ctx.z3_ctx)) }
+    pub fn new(ctx: &'ctx Context) -> Self {
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_solver(*ctx)) }
     }
 
     /// Parse an SMT-LIB2 string with assertions, soft constraints and optimization objectives.
     /// Add the parsed constraints and objectives to the solver.
-    pub fn from_string<T: Into<Vec<u8>>>(&self, source_string: T) {
-        let source_cstring = CString::new(source_string).unwrap();
-        unsafe {
-            Z3_solver_from_string(self.ctx.z3_ctx, self.z3_slv, source_cstring.as_ptr());
-        }
+    pub fn from_smtlib(&self, source: impl Into<Vec<[u8]>>) {
+        let source_cstring = CString::new(source).unwrap();
+        let p = self.check_error_ptr(unsafe {
+            Z3_solver_from_string(*self.ctx(), *self, source_cstring.as_ptr());
+        }).unwrap();
     }
 
     /// Create a new solver customized for the given logic.
     /// It returns `None` if the logic is unknown or unsupported.
-    pub fn new_for_logic<S: Into<Symbol>>(ctx: &'ctx Context, logic: S) -> Option<Solver<'ctx>> {
-        unsafe {
-            let s = Z3_mk_solver_for_logic(ctx.z3_ctx, logic.into().as_z3_symbol(ctx));
-            if s.is_null() {
-                None
-            } else {
-                Some(Self::wrap(ctx, s))
-            }
-        }
+    pub fn new_for_logic<S: Into<Symbol>>(ctx: &'ctx Context, logic: S) -> Option<Self> {
+        let sym = logic.into().as_z3_symbol(ctx);
+        let p = self.check_error_ptr( unsafe { Z3_mk_solver_for_logic(*ctx, logic.into().as_z3_symbol(ctx)) } ).ok()?;
+        unsafe { Self::wrap(ctx, p) }
     }
 
     pub fn translate<'dest_ctx>(&self, dest: &'dest_ctx Context) -> Solver<'dest_ctx> {
         unsafe {
             Solver::wrap(
                 dest,
-                Z3_solver_translate(self.ctx.z3_ctx, self.z3_slv, dest.z3_ctx),
+                self.check_error_ptr(Z3_solver_translate(*self.ctx(), *self, *dest)).unwrap(),
             )
         }
-    }
-
-    /// Get this solver's context.
-    pub fn get_context(&self) -> &'ctx Context {
-        self.ctx
     }
 
     /// Assert a constraint into the solver.
@@ -109,7 +105,8 @@ impl<'ctx> Solver<'ctx> {
     /// - [`Solver::assert_and_track()`]
     pub fn assert(&self, ast: &ast::Bool<'ctx>) {
         debug!("assert: {:?}", ast);
-        unsafe { Z3_solver_assert(self.ctx.z3_ctx, self.z3_slv, ast.z3_ast) };
+        unsafe { Z3_solver_assert(*self.ctx(), *self, *ast) };
+        self.check_error().unwrap();
     }
 
     /// Assert a constraint `a` into the solver, and track it (in the
@@ -128,12 +125,14 @@ impl<'ctx> Solver<'ctx> {
     /// - [`Solver::assert()`]
     pub fn assert_and_track(&self, ast: &ast::Bool<'ctx>, p: &ast::Bool<'ctx>) {
         debug!("assert_and_track: {:?}", ast);
-        unsafe { Z3_solver_assert_and_track(self.ctx.z3_ctx, self.z3_slv, ast.z3_ast, p.z3_ast) };
+        unsafe { Z3_solver_assert_and_track(*self.ctx(), *self, ast.z3_ast, p.z3_ast) };
+        self.check_error().unwrap();
     }
 
     /// Remove all assertions from the solver.
     pub fn reset(&self) {
-        unsafe { Z3_solver_reset(self.ctx.z3_ctx, self.z3_slv) };
+        unsafe { Z3_solver_reset(*self.ctx(), *self) };
+        self.check_error().unwrap();
     }
 
     /// Check whether the assertions in a given solver are consistent or not.
@@ -160,7 +159,7 @@ impl<'ctx> Solver<'ctx> {
     /// [model construction is enabled]: crate::Config::set_model_generation
     /// [proof generation was enabled]: crate::Config::set_proof_generation
     pub fn check(&self) -> SatResult {
-        match unsafe { Z3_solver_check(self.ctx.z3_ctx, self.z3_slv) } {
+        match self.check_error_pass(unsafe { Z3_solver_check(*self.ctx(), *self) }).unwrap() {
             Z3_L_FALSE => SatResult::Unsat,
             Z3_L_UNDEF => SatResult::Unknown,
             Z3_L_TRUE => SatResult::Sat,
@@ -179,10 +178,13 @@ impl<'ctx> Solver<'ctx> {
     ///
     /// - [`Solver::check()`]
     pub fn check_assumptions(&self, assumptions: &[ast::Bool<'ctx>]) -> SatResult {
-        let a: Vec<Z3_ast> = assumptions.iter().map(|a| a.z3_ast).collect();
-        match unsafe {
-            Z3_solver_check_assumptions(self.ctx.z3_ctx, self.z3_slv, a.len() as u32, a.as_ptr())
-        } {
+        let a: Vec<NonNull<Z3_ast>> = assumptions.iter().map(Deref::deref).collect();
+        let len:u32 = a.len().try_into().unwrap();
+        let res = unsafe {
+            Z3_solver_check_assumptions(*self.ctx(), *self, len, a.as_ptr())
+        };
+        self.check_error().unwrap();
+        match res {
             Z3_L_FALSE => SatResult::Unsat,
             Z3_L_UNDEF => SatResult::Unknown,
             Z3_L_TRUE => SatResult::Sat,
@@ -192,12 +194,12 @@ impl<'ctx> Solver<'ctx> {
 
     // Return a vector of assumptions in the solver.
     pub fn get_assertions(&self) -> Vec<ast::Bool<'ctx>> {
-        let z3_vec = unsafe { Z3_solver_get_assertions(self.ctx.z3_ctx, self.z3_slv) };
-
-        (0..unsafe { Z3_ast_vector_size(self.ctx.z3_ctx, z3_vec) })
-            .map(|i| unsafe {
-                let z3_ast = Z3_ast_vector_get(self.ctx.z3_ctx, z3_vec, i);
-                ast::Bool::wrap(self.ctx, z3_ast)
+        let z3_vec = self.check_error_ptr(unsafe { Z3_solver_get_assertions(*self.ctx(), *self) }).unwrap();
+        let size = self.check_error_pass(unsafe { Z3_ast_vector_size(*self.ctx(), z3_vec) }).unwrap();
+        (0..size)
+            .map(|i| {
+                let data_ptr = self.check_error_ptr(unsafe { Z3_ast_vector_get(*self.ctx(), z3_vec, i) }).unwrap();
+                unsafe { ast::Bool::wrap(self.ctx, data_ptr) }
             })
             .collect()
     }
@@ -224,17 +226,17 @@ impl<'ctx> Solver<'ctx> {
     /// - [`Solver::check_assumptions`]
     /// - [`Solver::assert_and_track`]
     pub fn get_unsat_core(&self) -> Vec<ast::Bool<'ctx>> {
-        let z3_unsat_core = unsafe { Z3_solver_get_unsat_core(self.ctx.z3_ctx, self.z3_slv) };
+        let z3_unsat_core = unsafe { Z3_solver_get_unsat_core(*self.ctx(), *self) };
         if z3_unsat_core.is_null() {
             return vec![];
         }
 
-        let len = unsafe { Z3_ast_vector_size(self.ctx.z3_ctx, z3_unsat_core) };
+        let len = unsafe { Z3_ast_vector_size(*self.ctx(), z3_unsat_core) };
 
         let mut unsat_core = Vec::with_capacity(len as usize);
 
         for i in 0..len {
-            let elem = unsafe { Z3_ast_vector_get(self.ctx.z3_ctx, z3_unsat_core, i) };
+            let elem = unsafe { Z3_ast_vector_get(*self.ctx(), z3_unsat_core, i) };
             let elem = unsafe { ast::Bool::wrap(self.ctx, elem) };
             unsat_core.push(elem);
         }
@@ -249,30 +251,30 @@ impl<'ctx> Solver<'ctx> {
         variables: &[ast::Bool<'ctx>],
     ) -> Vec<ast::Bool<'ctx>> {
         unsafe {
-            let _assumptions = Z3_mk_ast_vector(self.ctx.z3_ctx);
-            Z3_ast_vector_inc_ref(self.ctx.z3_ctx, _assumptions);
+            let _assumptions = Z3_mk_ast_vector(*self.ctx());
+            Z3_ast_vector_inc_ref(*self.ctx(), _assumptions);
             assumptions.iter().for_each(|x| {
-                Z3_ast_vector_push(self.ctx.z3_ctx, _assumptions, x.z3_ast);
+                Z3_ast_vector_push(*self.ctx(), _assumptions, x.z3_ast);
             });
 
-            let _variables = Z3_mk_ast_vector(self.ctx.z3_ctx);
-            Z3_ast_vector_inc_ref(self.ctx.z3_ctx, _variables);
+            let _variables = Z3_mk_ast_vector(*self.ctx());
+            Z3_ast_vector_inc_ref(*self.ctx(), _variables);
             variables.iter().for_each(|x| {
-                Z3_ast_vector_push(self.ctx.z3_ctx, _variables, x.z3_ast);
+                Z3_ast_vector_push(*self.ctx(), _variables, x.z3_ast);
             });
-            let consequences = Z3_mk_ast_vector(self.ctx.z3_ctx);
-            Z3_ast_vector_inc_ref(self.ctx.z3_ctx, consequences);
+            let consequences = Z3_mk_ast_vector(*self.ctx());
+            Z3_ast_vector_inc_ref(*self.ctx(), consequences);
 
             Z3_solver_get_consequences(
-                self.ctx.z3_ctx,
-                self.z3_slv,
+                *self.ctx(),
+                *self,
                 _assumptions,
                 _variables,
                 consequences,
             );
             let mut cons = vec![];
-            for i in 0..Z3_ast_vector_size(self.ctx.z3_ctx, consequences) {
-                let val = Z3_ast_vector_get(self.ctx.z3_ctx, consequences, i);
+            for i in 0..Z3_ast_vector_size(*self.ctx(), consequences) {
+                let val = Z3_ast_vector_get(*self.ctx(), consequences, i);
                 cons.push(ast::Bool::wrap(self.ctx, val));
             }
             cons
@@ -287,7 +289,7 @@ impl<'ctx> Solver<'ctx> {
     ///
     /// - [`Solver::pop()`]
     pub fn push(&self) {
-        unsafe { Z3_solver_push(self.ctx.z3_ctx, self.z3_slv) };
+        unsafe { Z3_solver_push(*self.ctx(), *self) };
     }
 
     /// Backtrack `n` backtracking points.
@@ -296,7 +298,7 @@ impl<'ctx> Solver<'ctx> {
     ///
     /// - [`Solver::push()`]
     pub fn pop(&self, n: u32) {
-        unsafe { Z3_solver_pop(self.ctx.z3_ctx, self.z3_slv, n) };
+        unsafe { Z3_solver_pop(*self.ctx(), *self, n) };
     }
 
     /// Retrieve the model for the last [`Solver::check()`]
@@ -325,7 +327,7 @@ impl<'ctx> Solver<'ctx> {
     // This seems to actually return an Ast with kind `SortKind::Unknown`, which we don't
     // have an Ast subtype for yet.
     pub fn get_proof(&self) -> Option<impl Ast<'ctx>> {
-        let m = unsafe { Z3_solver_get_proof(self.ctx.z3_ctx, self.z3_slv) };
+        let m = unsafe { Z3_solver_get_proof(*self.ctx(), *self) };
         if !m.is_null() {
             Some(unsafe { ast::Dynamic::wrap(self.ctx, m) })
         } else {
@@ -337,7 +339,7 @@ impl<'ctx> Solver<'ctx> {
     /// [`SatResult::Unknown`]) for the commands [`Solver::check()`]
     /// and [`Solver::check_assumptions()`].
     pub fn get_reason_unknown(&self) -> Option<String> {
-        let p = unsafe { Z3_solver_get_reason_unknown(self.ctx.z3_ctx, self.z3_slv) };
+        let p = unsafe { Z3_solver_get_reason_unknown(*self.ctx(), *self) };
         if p.is_null() {
             return None;
         }
@@ -349,7 +351,7 @@ impl<'ctx> Solver<'ctx> {
 
     /// Set the current solver using the given parameters.
     pub fn set_params(&self, params: &Params<'ctx>) {
-        unsafe { Z3_solver_set_params(self.ctx.z3_ctx, self.z3_slv, params.z3_params) };
+        unsafe { Z3_solver_set_params(*self.ctx(), *self, params.z3_params) };
     }
 
     /// Retrieve the statistics for the last [`Solver::check()`].
@@ -357,7 +359,7 @@ impl<'ctx> Solver<'ctx> {
         unsafe {
             Statistics::wrap(
                 self.ctx,
-                Z3_solver_get_statistics(self.ctx.z3_ctx, self.z3_slv),
+                Z3_solver_get_statistics(*self.ctx(), *self),
             )
         }
     }
@@ -379,7 +381,7 @@ impl<'ctx> Solver<'ctx> {
 
         let p = unsafe {
             Z3_benchmark_to_smtlib_string(
-                self.ctx.z3_ctx,
+                *self.ctx(),
                 name.as_ptr(),
                 logic.as_ptr(),
                 status.as_ptr(),
@@ -397,44 +399,6 @@ impl<'ctx> Solver<'ctx> {
             .ok()
             .map(|s| s.to_string())
             .unwrap_or_else(String::new)
-    }
-}
-
-impl<'ctx> fmt::Display for Solver<'ctx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let p = unsafe { Z3_solver_to_string(self.ctx.z3_ctx, self.z3_slv) };
-        if p.is_null() {
-            return Result::Err(fmt::Error);
-        }
-        match unsafe { CStr::from_ptr(p) }.to_str() {
-            Ok(s) => write!(f, "{s}"),
-            Err(_) => Result::Err(fmt::Error),
-        }
-    }
-}
-
-impl<'ctx> fmt::Debug for Solver<'ctx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        <Self as fmt::Display>::fmt(self, f)
-    }
-}
-
-impl<'ctx> Drop for Solver<'ctx> {
-    fn drop(&mut self) {
-        unsafe { Z3_solver_dec_ref(self.ctx.z3_ctx, self.z3_slv) };
-    }
-}
-
-impl<'ctx> Clone for Solver<'ctx> {
-    // Cloning using routines suggested by the author of Z3: https://stackoverflow.com/questions/16516337/copying-z3-solver
-    fn clone(self: &Solver<'ctx>) -> Self {
-        let new_solver = Solver::new(self.ctx);
-
-        self.get_assertions().iter().for_each(|a| {
-            new_solver.assert(a);
-        });
-
-        new_solver
     }
 }
 

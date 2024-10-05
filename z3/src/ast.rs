@@ -12,9 +12,15 @@ use std::ptr::NonNull;
 pub use z3_sys::AstKind;
 use z3_sys::*;
 
-use crate::{error::*, Context, FuncDecl, IsNotApp, Pattern, Sort, SortDiffers, Symbol};
+use crate::{error::*, Context, FuncDecl, Pattern, Sort, SortDiffers, Symbol};
 
 use num::{bigint::BigInt, rational::BigRational};
+
+/// A struct to represent when an ast is not a function application.
+#[derive(Debug)]
+pub struct IsNotApp {
+    kind: AstKind,
+}
 
 type AstPtr = NonNull<Z3_ast>;
 
