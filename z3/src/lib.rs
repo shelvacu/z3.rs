@@ -147,15 +147,8 @@ macro_rules! make_Z3_object {
 
 pub use sort::{Sort, SortDiffers};
 pub use ast::IsNotApp;
-
-/// Model for the constraints inserted into the logical context.
-//
-// Note for in-crate users: Never construct a `Model` directly; only use
-// `Model::new()` which handles Z3 refcounting properly.
-pub struct Model<'ctx> {
-    ctx: &'ctx Context,
-    z3_mdl: NonNull<Z3_model>,
-}
+pub use ast_vector::AstVector;
+pub use model::Model;
 
 /// Context for solving optimization queries.
 //

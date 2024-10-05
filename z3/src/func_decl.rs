@@ -97,6 +97,10 @@ impl<'ctx> FuncDecl<'ctx> {
             }
         }
     }
+
+    pub fn range(&self) -> Sort<'ctx> {
+        unsafe { Z3_get_range() }
+    }
 }
 
 impl<'ctx> fmt::Display for FuncDecl<'ctx> {
