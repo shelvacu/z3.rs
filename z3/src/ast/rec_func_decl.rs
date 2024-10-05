@@ -5,10 +5,10 @@ use std::ops::Deref;
 
 use z3_sys::*;
 
-use crate::{Context, Symbol, make_z3_object};
-use crate::ast::{self, Ast, FuncDecl, Sort};
+use crate::{Context, Symbol, HasContext};
+use crate::ast::{self, Ast, FuncDecl, Sort, make_ast_object, unop};
 
-make_z3_object! {
+make_ast_object! {
     /// Recursive function declaration. Every function has an associated declaration.
     ///
     /// The declaration assigns a name, a return sort (i.e., type), and
@@ -20,32 +20,20 @@ make_z3_object! {
     /// # See also:
     ///
     /// - [`RecFuncDecl::add_def`]
-    pub struct RecFuncDecl<'ctx>
-    where
-        sys_ty: Z3_func_decl,
-
-    {
-        ctx: &'ctx Context,
-        z3_func_decl: NonNull<Z3_func_decl>,
-    }
+    pub struct RecFuncDecl<'ctx>;
 }
 
 impl<'ctx> RecFuncDecl<'ctx> {
-    pub(crate) unsafe fn wrap(ctx: &'ctx Context, z3_func_decl: Z3_func_decl) -> Self {
-        Z3_inc_ref(ctx.z3_ctx, Z3_func_decl_to_ast(ctx.z3_ctx, z3_func_decl));
-        Self { ctx, z3_func_decl }
-    }
-
     pub fn new<S: Into<Symbol>>(
         ctx: &'ctx Context,
         name: S,
         domain: &[&Sort<'ctx>],
         range: &Sort<'ctx>,
     ) -> Self {
-        assert!(domain.iter().all(|s| s.ctx.z3_ctx == ctx.z3_ctx));
-        assert_eq!(ctx.z3_ctx, range.ctx.z3_ctx);
+        assert!(domain.iter().all(|s| s.ctx() == ctx));
+        assert_eq!(ctx, range.ctx());
 
-        let domain: Vec<_> = domain.iter().map(|s| s.z3_sort).collect();
+        let domain: Vec<_> = domain.iter().map(|s| **s).collect();
 
         unsafe {
             Self::wrap(
@@ -59,6 +47,10 @@ impl<'ctx> RecFuncDecl<'ctx> {
                 ),
             )
         }
+    }
+
+    unop! {
+        pub fn get_range(Z3_get_range) -> Sort<'ctx>;
     }
 
     /// Adds the body to a recursive function.
@@ -96,61 +88,24 @@ impl<'ctx> RecFuncDecl<'ctx> {
     ///
     /// Note that `args` should have the types corresponding to the `domain` of the `RecFuncDecl`.
     pub fn add_def(&self, args: &[&dyn ast::Ast<'ctx>], body: &dyn Ast<'ctx>) {
-        assert!(args.iter().all(|arg| arg.get_ctx() == body.get_ctx()));
-        assert_eq!(self.ctx, body.get_ctx());
+        assert!(args.iter().all(|arg| arg.ctx() == body.ctx()));
+        assert_eq!(self.ctx(), body.ctx());
 
-        let mut args: Vec<_> = args.iter().map(|s| s.get_z3_ast()).collect();
+        let mut args: Vec<_> = args.iter().map(|s| **s).collect();
+        assert_eq!(body.get_sort(), self.get_range());
         unsafe {
-            assert_eq!(
-                body.get_sort().z3_sort,
-                Z3_get_range(self.ctx.z3_ctx, self.z3_func_decl)
-            );
-
             Z3_add_rec_def(
-                self.ctx.z3_ctx,
-                self.z3_func_decl,
-                self.arity() as u32,
+                **self.ctx(),
+                **self,
+                self.arity(),
                 args.as_mut_ptr(),
                 body.get_z3_ast(),
             );
-        }
+        };
+        self.check_error().unwrap();
     }
-}
 
-impl<'ctx> fmt::Display for RecFuncDecl<'ctx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let p = unsafe { Z3_func_decl_to_string(self.ctx.z3_ctx, self.z3_func_decl) };
-        if p.is_null() {
-            return Result::Err(fmt::Error);
-        }
-        match unsafe { CStr::from_ptr(p) }.to_str() {
-            Ok(s) => write!(f, "{s}"),
-            Err(_) => Result::Err(fmt::Error),
-        }
-    }
-}
-
-impl<'ctx> fmt::Debug for RecFuncDecl<'ctx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        <Self as fmt::Display>::fmt(self, f)
-    }
-}
-
-impl<'ctx> Drop for RecFuncDecl<'ctx> {
-    fn drop(&mut self) {
-        unsafe {
-            Z3_dec_ref(
-                self.ctx.z3_ctx,
-                Z3_func_decl_to_ast(self.ctx.z3_ctx, self.z3_func_decl),
-            );
-        }
-    }
-}
-
-impl<'ctx> Deref for RecFuncDecl<'ctx> {
-    type Target = FuncDecl<'ctx>;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*(self as *const _ as *const Self::Target) }
+    pub fn as_func_decl(&self) -> FuncDecl<'ctx> {
+        unsafe { FuncDecl::wrap(self.ctx(), **self) }
     }
 }

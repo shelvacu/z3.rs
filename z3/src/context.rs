@@ -71,7 +71,7 @@ impl Context {
     /// - [`ContextHandle`]
     /// - [`ContextHandle::interrupt()`]
     pub fn handle<'ctx>(&'ctx self) -> ContextHandle<'ctx> {
-        unsafe { ContextHandle::new(*self) }
+        unsafe { ContextHandle::new(**self) }
     }
 
     /// Update a global parameter.
@@ -82,7 +82,7 @@ impl Context {
     pub fn update_param_value(&mut self, k: &str, v: &str) {
         let ks = CString::new(k).unwrap();
         let vs = CString::new(v).unwrap();
-        unsafe { Z3_update_param_value(*self, ks.as_ptr(), vs.as_ptr()) };
+        unsafe { Z3_update_param_value(**self, ks.as_ptr(), vs.as_ptr()) };
     }
 
     /// Update a global parameter.
@@ -95,6 +95,26 @@ impl Context {
     pub fn update_bool_param_value(&mut self, k: &str, v: bool) {
         self.update_param_value(k, if v { "true" } else { "false" });
     }
+
+    pub fn num_tactics(&self) -> u32 {
+        self.check_error_pass(unsafe { Z3_get_num_tactics(**self) }).unwrap()
+    }
+
+    pub fn get_tactic_name(&self, idx: u32) -> String {
+        let p = self.check_error_pass(unsafe { Z3_get_tactic_name(**self, idx) }).unwrap();
+        assert!(!p.is_null());
+        unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap().to_string()
+    }
+
+    pub fn num_probes(&self) -> u32 {
+        self.check_error_pass(unsafe { Z3_get_num_probes(**self) }).unwrap()
+    }
+
+    pub fn get_probe_name(&self, idx: u32) -> String {
+        let p = self.check_error_pass(unsafe { Z3_get_probe_name(**self, idx) }).unwrap();
+        assert!(!p.is_null());
+        unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap().to_string()
+    }   
 }
 
 /// Handle that can be used to interrupt a computation from another thread.
