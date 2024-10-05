@@ -74,22 +74,9 @@ opaque_types! {
     /// Manager of all other Z3 objects, global configuration options, etc.
     pub struct Z3_context;
 
-    /// Kind of AST used to represent types.
-    pub struct Z3_sort;
-
-    /// Kind of AST used to represent function symbols.
-    pub struct Z3_func_decl;
-
     /// Abstract Syntax Tree node. That is, the data structure used in Z3
     /// to represent terms, formulas, and types.
     pub struct Z3_ast;
-
-    /// Kind of AST used to represent function applications.
-    pub struct Z3_app;
-
-    /// Kind of AST used to represent pattern and multi-patterns used
-    /// to guide quantifier instantiation.
-    pub struct Z3_pattern;
 
     /// Model for the constraints inserted into the logical context.
     pub struct Z3_model;
@@ -169,6 +156,20 @@ opaque_types! {
 
     pub struct Z3_rcf_num;
 }
+
+/// Kind of AST used to represent types.
+pub type Z3_sort = Z3_ast;
+
+/// Kind of AST used to represent function symbols.
+pub type Z3_func_decl = Z3_ast;
+
+/// Kind of AST used to represent function applications.
+pub type Z3_app = Z3_ast;
+
+/// Kind of AST used to represent pattern and multi-patterns used
+/// to guide quantifier instantiation.
+pub type Z3_pattern = Z3_ast;
+
 
 /// Z3 string type. It is just an alias for `const char *`.
 pub type Z3_string = *const ::std::os::raw::c_char;
