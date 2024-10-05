@@ -11,7 +11,7 @@ use z3_sys::*;
 use crate::{ApplyResult, Context, Goal, Params, Probe, Solver, Tactic};
 
 impl<'ctx> ApplyResult<'ctx> {
-    unsafe fn wrap(ctx: &'ctx Context, z3_apply_result: Z3_apply_result) -> ApplyResult<'ctx> {
+    unsafe fn wrap(ctx: &'ctx Context, z3_apply_result: *mut Z3_apply_result) -> ApplyResult<'ctx> {
         Z3_apply_result_inc_ref(ctx.z3_ctx, z3_apply_result);
         ApplyResult {
             ctx,
@@ -62,7 +62,7 @@ impl<'ctx> Tactic<'ctx> {
         })
     }
 
-    unsafe fn wrap(ctx: &'ctx Context, z3_tactic: Z3_tactic) -> Tactic<'ctx> {
+    unsafe fn wrap(ctx: &'ctx Context, z3_tactic: *mut Z3_tactic) -> Tactic<'ctx> {
         Z3_tactic_inc_ref(ctx.z3_ctx, z3_tactic);
         Tactic { ctx, z3_tactic }
     }

@@ -1,24 +1,63 @@
 use log::debug;
 use std::ffi::CString;
+use std::ptr::NonNull;
+use std::convert::AsRef;
+use std::marker::PhantomData;
 
 use z3_sys::*;
 
-use crate::{Config, Context, ContextHandle};
+use crate::{Config, ContextHandle, HasContext};
+
+/// Manager of all other Z3 objects, global configuration options, etc.
+///
+/// An application may use multiple Z3 contexts. Objects created in one context
+/// cannot be used in another one. However, several objects may be "translated" from
+/// one context to another. It is not safe to access Z3 objects from multiple threads.
+///
+/// # Examples:
+///
+/// Creating a context with the default configuration:
+///
+/// ```
+/// use z3::{Config, Context};
+/// let cfg = Config::new();
+/// let ctx = Context::new(&cfg);
+/// ```
+///
+/// # See also:
+///
+/// - [`Config`]
+/// - [`Context::new()`]
+#[derive(PartialEq, Eq, Debug)]
+pub struct Context {
+    ptr: NonNull<Z3_context>,
+    // Z3_context might hold references to strings in Config, don't let it drop before Z3_del_context
+    cfg: Config,
+}
+
+impl<'a> HasContext<'a> for Context {
+    fn ctx(&'a self) -> &'a Self {
+        self
+    }
+}
 
 impl Context {
-    pub fn new(cfg: &Config) -> Context {
-        Context {
-            z3_ctx: unsafe {
-                let p = Z3_mk_context_rc(cfg.z3_cfg);
-                debug!("new context {:p}", p);
-                Z3_set_error_handler(p, None);
-                p
-            },
+    pub fn new(cfg: Config) -> Context {
+        let z3_cfg = unsafe { Z3_mk_config() };
+        debug!("new config {:p}", z3_cfg);
+        let z3_cfg:NonNull<Z3_config> = z3_cfg.try_into().unwrap();
+        for (k, v) in cfg.kvs.iter() {
+            unsafe { Z3_set_param_value(z3_cfg, k, v) };
+            // no error handling for this one
         }
-    }
 
-    pub fn get_z3_context(&self) -> Z3_context {
-        self.z3_ctx
+        let p = unsafe { Z3_mk_context_rc(z3_cfg) };
+        debug!("new context {:p}", p);
+        unsafe { Z3_set_error_handler(p, None) };
+        Context {
+            ptr: p,
+            cfg,
+        }
     }
 
     /// Interrupt a solver performing a satisfiability test, a tactic processing a goal, or simplify functions.
@@ -32,8 +71,8 @@ impl Context {
     ///
     /// - [`ContextHandle`]
     /// - [`ContextHandle::interrupt()`]
-    pub fn handle(&self) -> ContextHandle {
-        ContextHandle { ctx: self }
+    pub fn handle(&'ctx self) -> ContextHandle<'ctx> {
+        unsafe { ContextHandle::new(*self) }
     }
 
     /// Update a global parameter.
@@ -59,11 +98,32 @@ impl Context {
     }
 }
 
+/// Handle that can be used to interrupt a computation from another thread.
+///
+/// # See also:
+///
+/// - [`Context::interrupt()`]
+/// - [`Context::handle()`]
+/// - [`ContextHandle::interrupt()`]
+#[derive(PartialEq, Eq, Debug)]
+pub struct ContextHandle<'ctx> {
+    ptr: NonNull<Z3_context>,
+    _phantom: PhantomData<&'ctx Context>,
+}
+
 impl<'ctx> ContextHandle<'ctx> {
+    /// Safety: ptr must have 'ctx lifetime
+    unsafe fn new(ptr: NonNull<Z3_context>) -> Self {
+        Self{
+            ptr,
+            _phantom: PhantomData,
+        }
+    }
+
     /// Interrupt a solver performing a satisfiability test, a tactic processing a goal, or simplify functions.
     pub fn interrupt(&self) {
         unsafe {
-            Z3_interrupt(self.ctx.z3_ctx);
+            Z3_interrupt(self.ptr);
         }
     }
 }
