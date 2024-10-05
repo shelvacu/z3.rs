@@ -556,12 +556,6 @@ macro_rules! impl_ast {
                 }
             }
         }
-
-        impl<'ctx> fmt::Display for $ast<'ctx> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-                <Self as fmt::Debug>::fmt(self, f)
-            }
-        }
     };
 }
 
@@ -1920,6 +1914,10 @@ impl<'ctx> Dynamic<'ctx> {
             SortKind::Datatype => Some(unsafe { Datatype::wrap(self.ctx, self.z3_ast) }),
             _ => None,
         }
+    }
+
+    pub fn is_as_array(&self) -> bool {
+        unsafe { Z3_is_as_array(self.ctx, self.z3_ast) }
     }
 }
 
