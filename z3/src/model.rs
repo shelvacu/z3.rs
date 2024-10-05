@@ -1,9 +1,10 @@
-use std::ffi::CStr;
-use std::fmt;
+use std::ptr::NonNull;
+use std::mem::MaybeUninit;
 
 use z3_sys::*;
 
-use crate::{ast::Ast, Context, FuncDecl, FuncInterp, Optimize, Solver, make_z3_object};
+use crate::{Context, FuncInterp, Optimize, Solver, make_z3_object};
+use crate::ast::{Ast, FuncDecl, Dynamic};
 
 make_z3_object! {
     /// Model for the constraints inserted into the logical context.
@@ -26,7 +27,7 @@ impl<'ctx> Model<'ctx> {
     pub fn of_optimize(opt: &Optimize<'ctx>) -> Option<Model<'ctx>> {
         let m = unsafe { Z3_optimize_get_model(*opt.ctx(), *opt) };
         let m = opt.check_error_ptr(m).ok()?;
-        Some(Self::wrap(opt.ctx(), m))
+        Some(unsafe { Self::wrap(opt.ctx(), m) })
     }
 
     /// Translate model to context `dest`
@@ -54,7 +55,7 @@ impl<'ctx> Model<'ctx> {
     pub fn get_func_interp(&self, f: &FuncDecl) -> Option<FuncInterp<'ctx>> {
         if f.arity() == 0 {
             let ret = unsafe {
-                ast::Dynamic::wrap(self.ctx(), Z3_model_get_const_interp(*self.ctx(), *self, *f))
+                Dynamic::wrap(self.ctx(), Z3_model_get_const_interp(*self.ctx(), *self, *f))
             };
             if !ret.is_as_array() { return None; }
             let range = f.range();

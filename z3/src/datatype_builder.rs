@@ -5,9 +5,10 @@ use std::{convert::TryInto, ptr::null_mut};
 use z3_sys::*;
 
 use crate::{
-    Context, DatatypeAccessor, DatatypeBuilder, DatatypeSort, DatatypeVariant, FuncDecl, Sort,
+    Context, DatatypeAccessor, DatatypeBuilder, DatatypeSort, DatatypeVariant,
     Symbol,
 };
+use crate::ast::{FuncDecl, Sort};
 
 impl<'ctx> DatatypeBuilder<'ctx> {
     pub fn new<S: Into<Symbol>>(ctx: &'ctx Context, name: S) -> Self {

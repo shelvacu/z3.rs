@@ -1,18 +1,19 @@
-use log::debug;
 use std::ffi::{CStr, CString};
-use std::fmt;
+use std::ops::{AddAssign, Deref};
+use std::ptr::NonNull;
+
+use log::debug;
 
 use z3_sys::*;
 
-use std::ops::AddAssign;
-
-use crate::{ast, ast::Ast, Context, Model, Params, SatResult, Statistics, Symbol, make_z3_object};
+use crate::{Context, Model, Params, SatResult, Statistics, Symbol, AstVector, make_z3_object};
+use crate::ast::{self, Ast};
 
 make_z3_object! {
     /// (Incremental) solver, possibly specialized by a particular tactic or logic.
     pub struct Solver<'ctx>
     where
-        sys_ty; Z3_solver,
+        sys_ty: Z3_solver,
         inc_ref: Z3_solver_inc_ref,
         dec_ref: Z3_solver_dec_ref,
         to_str: Z3_solver_to_string,

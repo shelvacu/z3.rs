@@ -5,7 +5,30 @@ use std::ops::Deref;
 
 use z3_sys::*;
 
-use crate::{ast, ast::Ast, Context, FuncDecl, RecFuncDecl, Sort, Symbol};
+use crate::{Context, Symbol, make_z3_object};
+use crate::ast::{self, Ast, FuncDecl, Sort};
+
+make_z3_object! {
+    /// Recursive function declaration. Every function has an associated declaration.
+    ///
+    /// The declaration assigns a name, a return sort (i.e., type), and
+    /// the sort (i.e., type) of each of its arguments. This is the function declaration type
+    /// you should use if you want to add a definition to your function, recursive or not.
+    ///
+    /// This struct can dereference into a [`FuncDecl`] to access its methods.
+    ///
+    /// # See also:
+    ///
+    /// - [`RecFuncDecl::add_def`]
+    pub struct RecFuncDecl<'ctx>
+    where
+        sys_ty: Z3_func_decl,
+
+    {
+        ctx: &'ctx Context,
+        z3_func_decl: NonNull<Z3_func_decl>,
+    }
+}
 
 impl<'ctx> RecFuncDecl<'ctx> {
     pub(crate) unsafe fn wrap(ctx: &'ctx Context, z3_func_decl: Z3_func_decl) -> Self {

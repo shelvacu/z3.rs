@@ -4,46 +4,34 @@ use std::fmt;
 
 use z3_sys::*;
 
-use crate::{Context, FuncDecl, Symbol, make_z3_object};
+use crate::{Context, Symbol};
+use crate::ast::FuncDecl;
 
-make_z3_object! {
+use super::make_ast_object;
+
+make_ast_object! {
     /// Sorts represent the various 'types' of [`Ast`s](ast::Ast).
-    pub struct Sort<'ctx> 
-    where
-        sys_ty: Z3_sort,
-        inc_ref: Z3_inc_ref,
-        dec_ref: Z3_dec_ref,
-    ;
+    pub struct Sort<'ctx>;
 }
-
-
-/// A struct to represent when two sorts are of different types.
-#[derive(Debug)]
-pub struct SortDiffers<'ctx> {
-    pub left: Sort<'ctx>,
-    pub right: Sort<'ctx>,
-}
-
 
 impl<'ctx> Sort<'ctx> {
     pub fn uninterpreted(ctx: &'ctx Context, name: Into<Symbol>) -> Sort<'ctx> {
         let name = name.into();
         let sym = name.as_z3_symbol(ctx);
-        let sort_ptr = ctx.check_error_ptr(unsafe{Z3_mk_uninterpreted_sort(*ctx, sym)}).unwrap();
         unsafe {
-            Self::wrap(
+            Self::wrap_check_error(
                 ctx,
-                sort_ptr,
+                Z3_mk_uninterpreted_sort(*ctx, sym),
             )
         }
     }
 
     pub fn bool(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error_check_errors(ctx, Z3_mk_bool_sort(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_bool_sort(*ctx)) }
     }
 
     pub fn int(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error_check_errors(ctx, Z3_mk_int_sort(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_int_sort(*ctx)) }
     }
 
     pub fn real(ctx: &'ctx Context) -> Sort<'ctx> {
@@ -55,11 +43,11 @@ impl<'ctx> Sort<'ctx> {
     }
 
     pub fn float32(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_fpa_sort(*ctx, 8, 24)) }
+        Self::float(ctx, 8, 24)
     }
 
     pub fn double(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_fpa_sort(*ctx, 11, 53)) }
+        Self::float(ctx, 11, 53)
     }
 
     pub fn string(ctx: &'ctx Context) -> Sort<'ctx> {
@@ -74,13 +62,13 @@ impl<'ctx> Sort<'ctx> {
         unsafe {
             Self::wrap_check_error(
                 ctx,
-                Z3_mk_array_sort(*ctx, domain.z3_sort, range.z3_sort),
+                Z3_mk_array_sort(*ctx, *domain, *range),
             )
         }
     }
 
     pub fn set(ctx: &'ctx Context, elt: &Sort<'ctx>) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_set_sort(*ctx, elt.z3_sort)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_set_sort(*ctx, *elt)) }
     }
 
     pub fn seq(ctx: &'ctx Context, elt: &Sort<'ctx>) -> Sort<'ctx> {
@@ -149,8 +137,8 @@ impl<'ctx> Sort<'ctx> {
         };
 
         let assume_init = |i| unsafe { i.assume_init() };
-        let enum_consts = enum_consts.map(do_map);
-        let enum_testers = enum_testers.map(do_map);
+        let enum_consts = enum_consts.map(assume_init);
+        let enum_testers = enum_testers.map(assume_init);
         
         let make_func = |ast| unsafe { FuncDecl::wrap_check_error(self.ctx(), ast) };
         let enum_consts = enum_consts.map(make_func);
@@ -159,14 +147,14 @@ impl<'ctx> Sort<'ctx> {
         (sort, enum_consts, enum_testers)
     }
 
-    pub fn kind(&self) -> SortKind {
+    pub fn sort_kind(&self) -> SortKind {
         self.check_error_pass(unsafe { Z3_get_sort_kind(*self.ctx(), *self) }).unwrap()
     }
 
     /// Returns `Some(e)` where `e` is the number of exponent bits if the sort
     /// is a `FloatingPoint` and `None` otherwise.
     pub fn float_exponent_size(&self) -> Option<u32> {
-        if !self.kind() == SortKind::FloatingPoint { return None; }
+        if !self.sort_kind() == SortKind::FloatingPoint { return None; }
         self.check_error_pass(unsafe { Z3_fpa_get_ebits(*self.ctx(), *self) }).ok()
     }
 
@@ -194,7 +182,7 @@ impl<'ctx> Sort<'ctx> {
     /// assert!(!bool_sort.is_array());
     /// ```
     pub fn is_array(&self) -> bool {
-        self.kind() == SortKind::Array
+        self.sort_kind() == SortKind::Array
     }
 
     /// Return the `Sort` of the domain for `Array`s of this `Sort`.
@@ -253,11 +241,18 @@ impl<'ctx> Sort<'ctx> {
     }
 }
 
+/// A struct to represent when two sorts are of different types.
+#[derive(Debug)]
+pub struct SortDiffers<'ctx> {
+    pub left: Sort<'ctx>,
+    pub right: Sort<'ctx>,
+}
+
 impl<'ctx> fmt::Display for SortDiffers<'ctx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Can not compare nodes, Sort does not match.  Nodes contain types {} and {}",
+            "Can not compare nodes, Sort does not match.  Nodes contain types {:?} and {:?}",
             self.left, self.right
         )
     }

@@ -1,20 +1,29 @@
 //! Abstract syntax tree (AST).
 
-use log::debug;
+use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cmp::{Eq, PartialEq};
 use std::convert::{TryFrom, TryInto};
 use std::ffi::{CStr, CString};
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ptr::NonNull;
 
 pub use z3_sys::AstKind;
 use z3_sys::*;
 
-use crate::{error::*, Context, FuncDecl, Pattern, Sort, SortDiffers, Symbol, make_z3_object};
+use crate::{error::*, Context, HasContext, Symbol};
 
 use num::{bigint::BigInt, rational::BigRational};
+
+mod func_decl;
+mod rec_func_decl;
+mod pattern;
+mod sort;
+
+pub use sort::{Sort, SortDiffers};
+pub use func_decl::FuncDecl;
+pub use pattern::Pattern;
 
 /// A struct to represent when an ast is not a function application.
 #[derive(Debug)]
@@ -25,13 +34,12 @@ pub struct IsNotApp {
 macro_rules! make_ast_object {
     (
         $(#[$struct_meta:meta])*
-        $($v:vis)? struct $name:ident < 'ctx >
-        where
+        $v:vis struct $name:ident < 'ctx >
         ;
     ) => {
         $crate::make_z3_object!{
             $(#[$struct_meta])*
-            $($v)? struct $name<'ctx>
+            $v struct $name<'ctx>
             where
                 sys_ty: Z3_ast,
                 inc_ref: Z3_inc_ref,
@@ -46,13 +54,14 @@ macro_rules! make_ast_object {
             }
         }
 
-        impl<'a, 'b> $crate::Translateable<$name<'a>> for $name<'b> {}
+        impl<'a, 'b> $crate::ast::Translateable<$name<'a>> for $name<'b> {}
 
-        impl<'ctx> ::std::ops::Eq for $name<'ctx> {}
+        impl<'ctx> ::std::cmp::Eq for $name<'ctx> {}
 
         impl<'ctx> ::std::hash::Hash for $name<'ctx> {
             fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
-                self.check_error_pass(
+                $crate::HasContext::check_error_pass(
+                    self,
                     unsafe {
                         Z3_get_ast_hash(*self.ctx(), *self)
                     }
@@ -62,6 +71,8 @@ macro_rules! make_ast_object {
     }
 }
 
+pub(super) use make_ast_object;
+
 make_ast_object! {
     /// [`Ast`] node representing any node
     pub struct Dynamic<'ctx>;
@@ -69,7 +80,7 @@ make_ast_object! {
 
 make_ast_object! {
     /// [`Ast`] node representing a boolean value.
-    pub struct Boot<'ctx>;
+    pub struct Bool<'ctx>;
 }
 
 make_ast_object! {
@@ -151,12 +162,12 @@ make_ast_object! {
 macro_rules! unop {
     (
         $(
-            $( #[ $attr:meta ] )* $($v:vis)? fn $f:ident ( $z3fn:ident ) -> $retty:ty ;
+            $( #[ $attr:meta ] )* $v:vis fn $f:ident ( $z3fn:ident ) -> $retty:ty ;
         )*
     ) => {
         $(
             $( #[ $attr ] )*
-            $($v)? fn $f(&self) -> $retty {
+            $v fn $f(&self) -> $retty {
                 unsafe {
                     <$retty>::wrap_check_error(self.ctx, {
                         $z3fn(self.ctx(), *self)
@@ -166,16 +177,17 @@ macro_rules! unop {
         )*
     };
 }
+pub(super) use unop;
 
 macro_rules! binop {
     (
         $(
-            $( #[ $attr:meta ] )* $($v:vis) fn $f:ident ( $z3fn:ident, a ) -> $retty:ty ;
+            $( #[ $attr:meta ] )* $v:vis fn $f:ident ( $z3fn:ident, a ) -> $retty:ty ;
         )*
     ) => {
         $(
             $( #[ $attr ] )*
-            $($v)? fn $f(&self, other: &Self) -> $retty {
+            $v fn $f(&self, other: &Self) -> $retty {
                 assert!(self.ctx == other.ctx);
                 unsafe {
                     <$retty>::wrap_check_error(self.ctx, {
@@ -186,16 +198,17 @@ macro_rules! binop {
         )*
     };
 }
+pub(super) use binop;
 
 macro_rules! trinop {
     (
         $(
-            $( #[ $attr:meta ] )* $($v:vis)? fn $f:ident ( $z3fn:ident, a, b ) -> $retty:ty ;
+            $( #[ $attr:meta ] )* $v:vis fn $f:ident ( $z3fn:ident, a, b ) -> $retty:ty ;
         )*
     ) => {
         $(
             $( #[ $attr ] )*
-            $($v)? fn $f(&self, a: &Self, b: &Self) -> $retty {
+            $v fn $f(&self, a: &Self, b: &Self) -> $retty {
                 assert!((self.ctx == a.ctx) && (a.ctx == b.ctx));
                 unsafe {
                     <$retty>::wrap_check_error(self.ctx, {
@@ -206,16 +219,17 @@ macro_rules! trinop {
         )*
     };
 }
+pub(super) use trinop;
 
 macro_rules! varop {
     (
         $(
-            $( #[ $attr:meta ] )* $($v:vis)? fn $f:ident ( $z3fn:ident ... ) -> $retty:ty ;
+            $( #[ $attr:meta ] )* $v:vis fn $f:ident ( $z3fn:ident, ... ) -> $retty:ty ;
         )*
     ) => {
         $(
             $( #[ $attr ] )*
-            $($v)? fn $f(ctx: &'ctx Context, values: &[impl Borrow<Self>]) -> $retty {
+            $v fn $f(ctx: &'ctx Context, values: &[impl Borrow<Self>]) -> $retty {
                 assert!(values.iter().all(|v| v.borrow().ctx() == ctx));
                 let tmp: Vec<_> = values.iter().map(|x| *x.borrow()).collect();
                 let len_u32 = tmp.len().try_into().unwrap();
@@ -228,6 +242,7 @@ macro_rules! varop {
         )*
     };
 }
+pub(super) use varop;
 
 /// Abstract syntax tree (AST) nodes represent terms, constants, or expressions.
 /// The `Ast` trait contains methods common to all AST subtypes.
@@ -289,12 +304,12 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
 
     unop!{
         /// Get the [`Sort`] of the `Ast`.
-        fn sort(Z3_get_sort, a) -> Sort<'ctx>;
+        fn sort(Z3_get_sort) -> Sort<'ctx>;
 
         /// Simplify the `Ast`. Returns a new `Ast` which is equivalent,
         /// but simplified using algebraic simplification rules, such as
         /// constant propagation.
-        fn simplify(Z3_simplify, a) -> Self;
+        fn simplify(Z3_simplify) -> Self;
     }
 
     /// Performs substitution on the `Ast`. The slice `substitutions` contains a
@@ -454,6 +469,7 @@ macro_rules! impl_from_try_into_dynamic {
         }
     };
 }
+pub(super) use impl_from_try_into_dynamic;
 
 impl_from_try_into_dynamic!(Bool, as_bool);
 impl_from_try_into_dynamic!(Int, as_int);
@@ -1079,12 +1095,12 @@ impl<'ctx> AstString<'ctx> {
 macro_rules! bv_overflow_check_signed {
     (
         $(
-            $( #[ $attr:meta ] )* $($v:vis)? fn $f:ident ( $z3fn:ident ) ;
+            $( #[ $attr:meta ] )* $v:vis fn $f:ident ( $z3fn:ident ) ;
         )*
     ) => {
         $(
             $( #[ $attr ] )*
-            $($v)? fn $f(&self, other: &BV<'ctx>, b: bool) -> Bool<'ctx> {
+            $v fn $f(&self, other: &BV<'ctx>, b: bool) -> Bool<'ctx> {
                 unsafe {
                     Ast::wrap_check_error(self.ctx, {
                         $z3fn(*self.ctx(), *self, other.z3_ast, b)
@@ -1688,6 +1704,12 @@ impl<'ctx> Dynamic<'ctx> {
             SortKind::FloatingPoint => Some(unsafe { Float::wrap(self.ctx, *self) }),
             _ => None,
         }
+    }
+
+    /// Returns `None` if this is not actually a `FuncDecl`
+    pub fn as_func_decl(&self) -> Option<FuncDecl<'ctx>> {
+        if self.kind() != AstKind::FuncDecl { return None; }
+        Some(unsafe { FuncDecl::wrap(self.ctx(), *self) })
     }
 
     fn sort_ptr(&self) -> NonNull<Z3_sort> {
