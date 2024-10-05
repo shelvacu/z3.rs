@@ -2,7 +2,7 @@ use std::convert::{TryInto, TryFrom};
 
 use z3_sys::*;
 
-use crate::{Context, Symbol};
+use crate::{Context, HasContext, Symbol};
 use crate::ast::{self, Sort, Dynamic};
 use super::{make_ast_object, impl_from_try_into_dynamic, unop, binop, trinop, varop};
 
@@ -63,7 +63,7 @@ impl<'ctx> FuncDecl<'ctx> {
     /// assert_eq!(f.arity(), 2);
     /// ```
     pub fn arity(&self) -> usize {
-        self.check_error_pass(unsafe { Z3_get_arity(*self.ctx(), *self)}).unwrap().try_into().unwrap()
+        self.check_error_pass(unsafe { Z3_get_arity(**self.ctx(), **self)}).unwrap().try_into().unwrap()
     }
 
     /// Create a constant (if `args` has length 0) or function application (otherwise).
@@ -77,8 +77,8 @@ impl<'ctx> FuncDecl<'ctx> {
         unsafe {
             ast::Dynamic::wrap_check_error(self.ctx, {
                 Z3_mk_app(
-                    *self.ctx(),
-                    *self,
+                    **self.ctx(),
+                    **self,
                     args.len().try_into().unwrap(),
                     args.as_ptr(),
                 )
@@ -88,12 +88,12 @@ impl<'ctx> FuncDecl<'ctx> {
 
     /// Return the `DeclKind` of this `FuncDecl`.
     pub fn kind(&self) -> DeclKind {
-        self.check_error_pass(unsafe { Z3_get_decl_kind(*self.ctx(), *self) }).unwrap()
+        self.check_error_pass(unsafe { Z3_get_decl_kind(**self.ctx(), **self) }).unwrap()
     }
 
     /// Return the name of this `FuncDecl`.
     pub fn name(&self) -> Symbol {
-        let symbol = self.check_error_ptr(unsafe { Z3_get_decl_name(*ctx, zptr) }).unwrap();
+        let symbol = self.check_error_ptr(unsafe { Z3_get_decl_name(**self.ctx(), **self) }).unwrap();
         unsafe { Symbol::from_z3_symbol(self.ctx(), symbol) }
     }
 

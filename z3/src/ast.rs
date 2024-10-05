@@ -63,7 +63,7 @@ macro_rules! make_ast_object {
                 $crate::HasContext::check_error_pass(
                     self,
                     unsafe {
-                        Z3_get_ast_hash(*self.ctx(), *self)
+                        Z3_get_ast_hash(**self.ctx(), **self)
                     }
                 ).unwrap().hash(state)
             }
@@ -170,7 +170,7 @@ macro_rules! unop {
             $v fn $f(&self) -> $retty {
                 unsafe {
                     <$retty>::wrap_check_error(self.ctx, {
-                        $z3fn(self.ctx(), *self)
+                        $z3fn(self.ctx(), **self)
                     })
                 }
             }
@@ -191,7 +191,7 @@ macro_rules! binop {
                 assert!(self.ctx == other.ctx);
                 unsafe {
                     <$retty>::wrap_check_error(self.ctx, {
-                        $z3fn(*self.ctx(), *self, other.z3_ast)
+                        $z3fn(**self.ctx(), **self, other.z3_ast)
                     })
                 }
             }
@@ -212,7 +212,7 @@ macro_rules! trinop {
                 assert!((self.ctx == a.ctx) && (a.ctx == b.ctx));
                 unsafe {
                     <$retty>::wrap_check_error(self.ctx, {
-                        $z3fn(*self.ctx(), *self, a.z3_ast, b.z3_ast)
+                        $z3fn(**self.ctx(), **self, a.z3_ast, b.z3_ast)
                     })
                 }
             }
@@ -285,7 +285,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
         if left_sort == right_sort {
             Ok(unsafe {
                 Bool::wrap_check_error(self.ctx(), {
-                    Z3_mk_eq(*self.ctx(), *self, *other)
+                    Z3_mk_eq(**self.ctx(), **self, *other)
                 })
             })
         } else {
@@ -316,7 +316,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
     /// list of pairs with a "from" `Ast` that will be substituted by a "to" `Ast`.
     fn substitute<T: Ast<'ctx>>(&self, substitutions: &[(&T, &T)]) -> Self
     {
-        let this_ast = *self;
+        let this_ast = **self;
         let num_exprs:std::os::raw::c_uint = substitutions.len().try_into().unwrap();
         let mut froms: Vec<_> = vec![];
         let mut tos: Vec<_> = vec![];
@@ -328,7 +328,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
         unsafe {
             Self::wrap(self.ctx(), {
                 Z3_substitute(
-                    *self.ctx(),
+                    **self.ctx(),
                     this_ast,
                     num_exprs,
                     froms.as_ptr(),
@@ -343,7 +343,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
     /// Leaf nodes (eg `Bool` consts) will return 0.
     fn num_children(&self) -> usize {
         let res = unsafe {
-            Z3_get_app_num_args(*self.ctx(), *self)
+            Z3_get_app_num_args(**self.ctx(), **self)
         };
         self.check_error().unwrap();
         res.try_into().unwrap()
@@ -358,7 +358,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
         }
         let idx = u32::try_from(idx).unwrap();
         let child_ast = unsafe {
-            Z3_get_app_arg(*self.ctx(), *self, idx)
+            Z3_get_app_arg(**self.ctx(), **self, idx)
         };
         Some(unsafe { Dynamic::wrap_check_error(self.ctx(), child_ast) })
     }
@@ -372,7 +372,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
     /// Return the `AstKind` for this `Ast`.
     fn kind(&self) -> AstKind {
         let res = unsafe {
-            Z3_get_ast_kind(*self.ctx(), *self)
+            Z3_get_ast_kind(**self.ctx(), **self)
         };
         check_error(self.ctx()).unwrap();
         res
@@ -406,7 +406,7 @@ pub trait Ast<'ctx>: fmt::Debug + HasContext<'ctx> + Deref<Target = NonNull<Z3_a
             Err(IsNotApp::new(self.kind()))
         } else {
             let func_decl = unsafe {
-                Z3_get_app_decl(*self.ctx(), *self)
+                Z3_get_app_decl(**self.ctx(), **self)
             };
             Ok(unsafe { FuncDecl::wrap_check_error(self.ctx(), func_decl) })
         }
@@ -448,7 +448,7 @@ where
     U: Ast<'ctx>,
 {
     fn eq(&self, other: &U) -> bool {
-        self.check_error_pass(unsafe { Z3_is_eq_ast(*self.ctx(), *self, *other) })
+        self.check_error_pass(unsafe { Z3_is_eq_ast(**self.ctx(), **self, *other) })
     }
 }
 
@@ -533,7 +533,7 @@ impl<'ctx> Float<'ctx> {
     }
 
     pub fn as_f64(&self) -> f64 {
-        let res = unsafe { Z3_get_numeral_double(*self.ctx(), *self) };
+        let res = unsafe { Z3_get_numeral_double(**self.ctx(), **self) };
         self.check_error().unwrap();
         res
     }
@@ -576,7 +576,7 @@ impl<'ctx> Bool<'ctx> {
 
     pub fn as_bool(&self) -> Option<bool> {
         unsafe {
-            match self.check_error_pass(Z3_get_bool_value(*self.ctx(), *self)).unwrap() {
+            match self.check_error_pass(Z3_get_bool_value(**self.ctx(), **self)).unwrap() {
                 Z3_L_TRUE => Some(true),
                 Z3_L_FALSE => Some(false),
                 _ => None,
@@ -591,7 +591,7 @@ impl<'ctx> Bool<'ctx> {
     {
         unsafe {
             T::wrap_check_error(self.ctx, {
-                Z3_mk_ite(*self.ctx(), *self, *a, *b)
+                Z3_mk_ite(**self.ctx(), **self, *a, *b)
             })
         }
     }
@@ -701,7 +701,7 @@ impl<'ctx> Int<'ctx> {
         let mut tmp:i64 = 0;
         let res = check_error_pass(
             unsafe {
-                Z3_get_numeral_int64(*self.ctx(), *self, &mut tmp)
+                Z3_get_numeral_int64(**self.ctx(), **self, &mut tmp)
             }
         ).unwrap();
         if res {
@@ -715,7 +715,7 @@ impl<'ctx> Int<'ctx> {
         let mut tmp:u64 = 0;
         let res = check_error_pass(
             unsafe {
-                Z3_get_numeral_uint64(*self.ctx(), *self, &mut tmp)
+                Z3_get_numeral_uint64(**self.ctx(), **self, &mut tmp)
             }
         ).unwrap();
         if res {
@@ -842,7 +842,7 @@ impl<'ctx> Real<'ctx> {
     pub fn as_real(&self) -> Option<(i64, i64)> {
         let mut num: i64 = 0;
         let mut den: i64 = 0;
-        unsafe { Z3_get_numeral_small(*self.ctx(), *self, &mut num, &mut den) };
+        unsafe { Z3_get_numeral_small(**self.ctx(), **self, &mut num, &mut den) };
         self.check_error().ok().map(|()| (num, den))
     }
 
@@ -851,8 +851,8 @@ impl<'ctx> Real<'ctx> {
         let zstr = self.check_error_ptr(
             unsafe {
                 Z3_get_numeral_decimal_string(
-                    *self.ctx(),
-                    *self,
+                    **self.ctx(),
+                    **self,
                     precision_convert,
                 )
             }
@@ -1055,10 +1055,10 @@ impl<'ctx> AstString<'ctx> {
     /// `z3::ast::String::from_str(&ctx, s).unwrap().as_string()` returns a
     /// `String` equal to the original value.
     pub fn as_string(&self) -> Option<std::string::String> {
-        let z3_ctx = *self.ctx();
+        let z3_ctx = **self.ctx();
         let zstr = self.check_error_ptr(
             unsafe {
-                Z3_get_string(z3_ctx, *self)
+                Z3_get_string(z3_ctx, **self)
             }
         ).ok()?;
         Some(unsafe { CStr::from_ptr(zstr) }
@@ -1072,7 +1072,7 @@ impl<'ctx> AstString<'ctx> {
         unsafe {
             Bool::wrap_check_error(
                 self.ctx,
-                Z3_mk_seq_in_re(*self.ctx(), *self, *regex),
+                Z3_mk_seq_in_re(**self.ctx(), **self, *regex),
             )
         }
     }
@@ -1103,7 +1103,7 @@ macro_rules! bv_overflow_check_signed {
             $v fn $f(&self, other: &BV<'ctx>, b: bool) -> Bool<'ctx> {
                 unsafe {
                     Ast::wrap_check_error(self.ctx, {
-                        $z3fn(*self.ctx(), *self, other.z3_ast, b)
+                        $z3fn(**self.ctx(), **self, other.z3_ast, b)
                     })
                 }
             }
@@ -1156,14 +1156,14 @@ impl<'ctx> BV<'ctx> {
 
     pub fn as_i64(&self) -> Option<i64> {
         let mut out:i64 = 0;
-        if self.check_error_pass(unsafe{Z3_get_numeral_int64(*self.ctx(), *self, &mut out)}) {
+        if self.check_error_pass(unsafe{Z3_get_numeral_int64(**self.ctx(), **self, &mut out)}) {
             Some(out)
         } else { None }
     }
 
     pub fn as_u64(&self) -> Option<u64> {
         let mut out:u64 = 0;
-        if self.check_error_pass(unsafe{Z3_get_numeral_uint64(*self.ctx(), *self, &mut out)}) {
+        if self.check_error_pass(unsafe{Z3_get_numeral_uint64(**self.ctx(), **self, &mut out)}) {
             Some(out)
         } else { None }
     }
@@ -1204,7 +1204,7 @@ impl<'ctx> BV<'ctx> {
     /// Get the size of the bitvector (in bits)
     pub fn get_size(&self) -> u32 {
         let sort = self.get_sort();
-        self.check_error_pass(unsafe { Z3_get_bv_sort_size(*self.ctx(), *sort) }).unwrap()
+        self.check_error_pass(unsafe { Z3_get_bv_sort_size(**self.ctx(), *sort) }).unwrap()
     }
 
     // Bitwise ops
@@ -1321,7 +1321,7 @@ impl<'ctx> BV<'ctx> {
     pub fn extract(&self, high: u32, low: u32) -> Self {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_extract(*self.ctx(), high, low, *self)
+                Z3_mk_extract(**self.ctx(), high, low, **self)
             })
         }
     }
@@ -1331,7 +1331,7 @@ impl<'ctx> BV<'ctx> {
     pub fn sign_ext(&self, i: u32) -> Self {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_sign_ext(*self.ctx(), i, *self)
+                Z3_mk_sign_ext(**self.ctx(), i, **self)
             })
         }
     }
@@ -1341,7 +1341,7 @@ impl<'ctx> BV<'ctx> {
     pub fn zero_ext(&self, i: u32) -> Self {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_zero_ext(*self.ctx(), i, *self)
+                Z3_mk_zero_ext(**self.ctx(), i, **self)
             })
         }
     }
@@ -1416,7 +1416,7 @@ impl<'ctx> Array<'ctx> {
         // This way we also avoid the redundant check every time this method is called.
         unsafe {
             Dynamic::wrap_check_error(self.ctx, {
-                Z3_mk_select(*self.ctx(), *self, *index)
+                Z3_mk_select(**self.ctx(), **self, *index)
             })
         }
     }
@@ -1429,8 +1429,8 @@ impl<'ctx> Array<'ctx> {
         unsafe {
             Dynamic::wrap_check_error(self.ctx, {
                 Z3_mk_select_n(
-                    *self.ctx(),
-                    *self,
+                    **self.ctx(),
+                    **self,
                     idxs.len().try_into().unwrap(),
                     idxs.as_ptr() as *const Z3_ast,
                 )
@@ -1452,8 +1452,8 @@ impl<'ctx> Array<'ctx> {
         unsafe {
             Self::wrap_check_error(self.ctx, {
                 Z3_mk_store(
-                    *self.ctx(),
-                    *self,
+                    **self.ctx(),
+                    **self,
                     *index,
                     *value,
                 )
@@ -1525,7 +1525,7 @@ impl<'ctx> Set<'ctx> {
     {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_set_add(*self.ctx(), *self, *element)
+                Z3_mk_set_add(**self.ctx(), **self, *element)
             })
         }
     }
@@ -1541,7 +1541,7 @@ impl<'ctx> Set<'ctx> {
     {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_set_del(*self.ctx(), *self, *element)
+                Z3_mk_set_del(**self.ctx(), **self, *element)
             })
         }
     }
@@ -1557,7 +1557,7 @@ impl<'ctx> Set<'ctx> {
     {
         unsafe {
             Bool::wrap_check_error(self.ctx, {
-                Z3_mk_set_member(*self.ctx(), *element, *self)
+                Z3_mk_set_member(**self.ctx(), *element, **self)
             })
         }
     }
@@ -1671,13 +1671,13 @@ impl<'ctx> Dynamic<'ctx> {
     }
 
     pub fn sort_kind(&self) -> SortKind {
-        self.check_error_pass(unsafe { Z3_get_sort_kind(*self.ctx(), Z3_get_sort(*self.ctx(), *self)) }).unwrap()
+        self.check_error_pass(unsafe { Z3_get_sort_kind(**self.ctx(), Z3_get_sort(**self.ctx(), **self)) }).unwrap()
     }
 
     /// Returns `None` if the `Dynamic` is not actually a `Bool`
     pub fn as_bool(&self) -> Option<Bool<'ctx>> {
         match self.sort_kind() {
-            SortKind::Bool => Some(unsafe { Bool::wrap(self.ctx, *self) }),
+            SortKind::Bool => Some(unsafe { Bool::wrap(self.ctx, **self) }),
             _ => None,
         }
     }
@@ -1685,7 +1685,7 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually an `Int`
     pub fn as_int(&self) -> Option<Int<'ctx>> {
         match self.sort_kind() {
-            SortKind::Int => Some(unsafe { Int::wrap(self.ctx, *self) }),
+            SortKind::Int => Some(unsafe { Int::wrap(self.ctx, **self) }),
             _ => None,
         }
     }
@@ -1693,7 +1693,7 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually a `Real`
     pub fn as_real(&self) -> Option<Real<'ctx>> {
         match self.sort_kind() {
-            SortKind::Real => Some(unsafe { Real::wrap(self.ctx, *self) }),
+            SortKind::Real => Some(unsafe { Real::wrap(self.ctx, **self) }),
             _ => None,
         }
     }
@@ -1701,7 +1701,7 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually a `Float`
     pub fn as_float(&self) -> Option<Float<'ctx>> {
         match self.sort_kind() {
-            SortKind::FloatingPoint => Some(unsafe { Float::wrap(self.ctx, *self) }),
+            SortKind::FloatingPoint => Some(unsafe { Float::wrap(self.ctx, **self) }),
             _ => None,
         }
     }
@@ -1709,19 +1709,19 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if this is not actually a `FuncDecl`
     pub fn as_func_decl(&self) -> Option<FuncDecl<'ctx>> {
         if self.kind() != AstKind::FuncDecl { return None; }
-        Some(unsafe { FuncDecl::wrap(self.ctx(), *self) })
+        Some(unsafe { FuncDecl::wrap(self.ctx(), **self) })
     }
 
     fn sort_ptr(&self) -> NonNull<Z3_sort> {
-        self.check_error_ptr(unsafe { Z3_get_sort(*self.ctx(), *self) }).unwrap()
+        self.check_error_ptr(unsafe { Z3_get_sort(**self.ctx(), **self) }).unwrap()
     }
 
     /// Returns `None` if the `Dynamic` is not actually a `String`
     pub fn as_string(&self) -> Option<String<'ctx>> {
         let sort = self.sort_ptr();
-        let is_string_sort = self.check_error_pass(unsafe { Z3_is_string_sort(*self.ctx(), sort) }).unwrap();
+        let is_string_sort = self.check_error_pass(unsafe { Z3_is_string_sort(**self.ctx(), sort) }).unwrap();
         if is_string_sort {
-            Some(unsafe { String::wrap(self.ctx, *self) })
+            Some(unsafe { String::wrap(self.ctx, **self) })
         } else {
             None
         }
@@ -1730,7 +1730,7 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually a `BV`
     pub fn as_bv(&self) -> Option<BV<'ctx>> {
         match self.sort_kind() {
-            SortKind::BV => Some(unsafe { BV::wrap(self.ctx, *self) }),
+            SortKind::BV => Some(unsafe { BV::wrap(self.ctx, **self) }),
             _ => None,
         }
     }
@@ -1738,7 +1738,7 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually an `Array`
     pub fn as_array(&self) -> Option<Array<'ctx>> {
         match self.sort_kind() {
-            SortKind::Array => Some(unsafe { Array::wrap(self.ctx, *self) }),
+            SortKind::Array => Some(unsafe { Array::wrap(self.ctx, **self) }),
             _ => None,
         }
     }
@@ -1747,10 +1747,10 @@ impl<'ctx> Dynamic<'ctx> {
     pub fn as_set(&self) -> Option<Set<'ctx>> {
         if self.sort_kind() != SortKind::Array { return None; }
         let sort = self.sort_ptr();
-        let sort_range = self.check_error_ptr(unsafe { Z3_get_array_sort_range(*self.ctx(), sort) }).unwrap();
-        let sort_kind = self.check_error_pass(unsafe { Z3_get_sort_kind(*self.ctx(), sort_range) }).unwrap();
+        let sort_range = self.check_error_ptr(unsafe { Z3_get_array_sort_range(**self.ctx(), sort) }).unwrap();
+        let sort_kind = self.check_error_pass(unsafe { Z3_get_sort_kind(**self.ctx(), sort_range) }).unwrap();
         if sort_kind != SortKind::Bool { return None; }
-        Some(unsafe { Set::wrap(self.ctx, *self) })
+        Some(unsafe { Set::wrap(self.ctx, **self) })
     }
 
     /// Returns `None` if the `Dynamic` is not actually a `Seq`.
@@ -1764,11 +1764,11 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually a `Datatype`
     pub fn as_datatype(&self) -> Option<Datatype<'ctx>> {
         if self.sort_kind() != SortKind::Datatype { return None; }
-        Some(unsafe { Datatype::wrap(self.ctx, *self) })
+        Some(unsafe { Datatype::wrap(self.ctx, **self) })
     }
 
     pub fn is_as_array(&self) -> bool {
-        self.check_error_wrap(unsafe { Z3_is_as_array(self.ctx, *self) }).unwrap()
+        self.check_error_wrap(unsafe { Z3_is_as_array(self.ctx, **self) }).unwrap()
     }
 }
 
@@ -1824,7 +1824,7 @@ impl<'ctx> Regexp<'ctx> {
     pub fn times(&self, lo: u32, hi: u32) -> Self {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_re_loop(*self.ctx(), *self, lo, hi)
+                Z3_mk_re_loop(**self.ctx(), **self, lo, hi)
             })
         }
     }
@@ -1835,7 +1835,7 @@ impl<'ctx> Regexp<'ctx> {
     pub fn power(&self, n: u32) -> Self {
         unsafe {
             Self::wrap_check_error(self.ctx, {
-                Z3_mk_re_power(*self.ctx(), *self, n)
+                Z3_mk_re_power(**self.ctx(), **self, n)
             })
         }
     }

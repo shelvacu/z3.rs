@@ -33,7 +33,6 @@ mod func_entry;
 mod func_interp;
 
 pub use crate::params::{get_global_param, reset_all_global_params, set_global_param};
-pub use crate::statistics::{StatisticsEntry, StatisticsValue};
 pub use crate::version::{full_version, version, Version};
 
 pub use config::Config;
@@ -70,16 +69,16 @@ macro_rules! make_z3_object {
             ///
             /// `ptr` must be a valid pointer to a [`$sys_ty`]
             pub unsafe fn wrap(ctx: &'ctx $crate::Context, ptr: ::std::ptr::NonNull<$sys_ty>) -> Self {
-                $inc_ref(*ctx, ptr);
-                ctx.check_error().unwrap();
+                $inc_ref(**ctx, ptr);
+                $crate::HasContext::check_error(&ctx).unwrap();
                 Self {
                     _ctx: ctx,
                     _ptr: ptr,
                 }
             }
 
-            pub unsafe fn wrap_check_errors(ctx: &'ctx $crate::Context, ptr: *mut $sys_ty) -> Self {
-                let checked_ptr = $crate::HasContext::check_error_ptr(ctx, ptr).unwrap();
+            pub unsafe fn wrap_check_error(ctx: &'ctx $crate::Context, ptr: *mut $sys_ty) -> Self {
+                let checked_ptr = $crate::HasContext::check_error_ptr(&ctx, ptr).unwrap();
                 Self::wrap(ctx, checked_ptr)
             }
         }
@@ -100,13 +99,13 @@ macro_rules! make_z3_object {
 
         impl<'ctx> ::std::clone::Clone for $name<'ctx> {
             fn clone(&self) -> Self {
-                unsafe { Self::wrap(self._ctx, *self) }
+                unsafe { Self::wrap(self._ctx, **self) }
             }
         }
 
         impl<'ctx> ::std::ops::Drop for $name<'ctx> {
             fn drop(&mut self) {
-                unsafe { $dec_ref(*self.ctx, *self) };
+                unsafe { $dec_ref(**self._ctx, **self) };
                 // panic!ing in drop is annoying, so don't do that, so don't call check_error since we're not going to do anything with the result
             }
         }
@@ -114,8 +113,8 @@ macro_rules! make_z3_object {
         $(
         impl<'ctx> ::std::fmt::Debug for $name<'ctx> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                let p = unsafe { $to_str(*self.ctx(), self._ptr) };
-                let p = self.check_error_ptr(p).map_err(|_| ::std::fmt::Error)?;
+                let p = unsafe { $to_str(**self._ctx, self._ptr) };
+                let p = $crate::HasContext::check_error_ptr(self, p).map_err(|_| ::std::fmt::Error)?;
                 let z3_msg = unsafe { ::std::ffi::CStr::from_ptr(p) }.to_str().map_err(|_| ::std::fmt::Error)?;
                 write!(f, "{}({})", stringify!($name), z3_msg)
             }
@@ -192,22 +191,22 @@ pub struct DatatypeBuilder<'ctx> {
 /// Wrapper which can point to a sort (by value) or to a custom datatype (by name).
 #[derive(Debug)]
 pub enum DatatypeAccessor<'ctx> {
-    Sort(Sort<'ctx>),
+    Sort(ast::Sort<'ctx>),
     Datatype(Symbol),
 }
 
 /// Inner variant for a custom [datatype sort](DatatypeSort).
 #[derive(Debug)]
 pub struct DatatypeVariant<'ctx> {
-    pub constructor: FuncDecl<'ctx>,
-    pub tester: FuncDecl<'ctx>,
-    pub accessors: Vec<FuncDecl<'ctx>>,
+    pub constructor: ast::FuncDecl<'ctx>,
+    pub tester: ast::FuncDecl<'ctx>,
+    pub accessors: Vec<ast::FuncDecl<'ctx>>,
 }
 
 /// A custom datatype sort.
 #[derive(Debug)]
 pub struct DatatypeSort<'ctx> {
-    pub sort: Sort<'ctx>,
+    pub sort: ast::Sort<'ctx>,
     pub variants: Vec<DatatypeVariant<'ctx>>,
 }
 
@@ -252,66 +251,23 @@ pub trait HasContext<'ctx> {
         Err(Error{code, msg})
     }
 
+    fn check_error_str(&self, s: Z3_string) -> String {
+        self.check_error().unwrap();
+        assert!(!s.is_null());
+        unsafe { CStr::from_ptr(s) }.to_str().unwrap().to_string()
+    }
+
     fn get_error_code(&self) -> ErrorCode {
-        unsafe { Z3_get_error_code(*self.ctx()) }
+        unsafe { Z3_get_error_code(**self.ctx()) }
     }
 
     fn get_error_message(&self, err_code: ErrorCode) -> String {
-        let msg_cstr = unsafe { CStr::from_ptr(Z3_get_error_msg(*self.ctx(), err_code)) };
+        let msg_cstr = unsafe { CStr::from_ptr(Z3_get_error_msg(**self.ctx(), err_code)) };
         msg_cstr.to_str().expect("Failed to decode error message from Z3 as UTF-8").to_string()
     }
 }
 
-/// Collection of subgoals resulting from applying of a tactic to a goal.
-#[derive(Clone, Debug)]
-pub struct ApplyResult<'ctx> {
-    ctx: &'ctx Context,
-    z3_apply_result: NonNull<Z3_apply_result>,
-}
-
-/// Basic building block for creating custom solvers for specific problem domains.
-///
-/// Z3 provides a variety of tactics, which can be queried via
-/// [`Tactic::list_all()`]. Individual tactics can be created via
-/// [`Tactic::new()`].
-///
-/// Various combinators are available to combine tactics:
-///
-/// - [`Tactic::repeat()`]
-/// - [`Tactic::try_for()`]
-/// - [`Tactic::and_then()`]
-/// - [`Tactic::or_else()`]
-/// - [`Tactic::probe_or_else()`]
-/// - [`Tactic::when()`]
-/// - [`Tactic::cond()`]
-///
-/// Finally, a solver utilizing a tactic can be created via
-/// [`Tactic::solver()`].
-pub struct Tactic<'ctx> {
-    ctx: &'ctx Context,
-    z3_tactic: NonNull<Z3_tactic>,
-}
-
 pub use goal::Goal;
-
-/// Function/predicate used to inspect a goal and collect information
-/// that may be used to decide which solver and/or preprocessing step
-/// will be used.
-///
-/// Z3 provides a variety of probes, which can be queried via
-/// [`Probe::list_all()`].
-pub struct Probe<'ctx> {
-    ctx: &'ctx Context,
-    z3_probe: NonNull<Z3_probe>,
-}
-
-/// Statistical data about a solver.
-///
-/// # See also:
-///
-/// - [`Optimize::get_statistics()`]
-/// - [`Solver::get_statistics()`]
-pub struct Statistics<'ctx> {
-    ctx: &'ctx Context,
-    z3_stats: NonNull<Z3_stats>,
-}
+pub use tactic::{ApplyResult,Tactic};
+pub use probe::Probe;
+pub use statistics::{Statistics, StatisticsValue};

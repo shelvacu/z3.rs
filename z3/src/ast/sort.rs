@@ -1,10 +1,11 @@
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::fmt;
+use std::ptr::NonNull;
 
 use z3_sys::*;
 
-use crate::{Context, Symbol};
+use crate::{Context, HasContext, Symbol};
 use crate::ast::FuncDecl;
 
 use super::make_ast_object;
@@ -15,31 +16,31 @@ make_ast_object! {
 }
 
 impl<'ctx> Sort<'ctx> {
-    pub fn uninterpreted(ctx: &'ctx Context, name: Into<Symbol>) -> Sort<'ctx> {
+    pub fn uninterpreted(ctx: &'ctx Context, name: impl Into<Symbol>) -> Sort<'ctx> {
         let name = name.into();
         let sym = name.as_z3_symbol(ctx);
         unsafe {
             Self::wrap_check_error(
                 ctx,
-                Z3_mk_uninterpreted_sort(*ctx, sym),
+                Z3_mk_uninterpreted_sort(**ctx, sym),
             )
         }
     }
 
     pub fn bool(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_bool_sort(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_bool_sort(**ctx)) }
     }
 
     pub fn int(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_int_sort(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_int_sort(**ctx)) }
     }
 
     pub fn real(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_real_sort(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_real_sort(**ctx)) }
     }
 
     pub fn float(ctx: &'ctx Context, ebits: u32, sbits: u32) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_fpa_sort(*ctx, ebits, sbits)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_fpa_sort(**ctx, ebits, sbits)) }
     }
 
     pub fn float32(ctx: &'ctx Context) -> Sort<'ctx> {
@@ -51,24 +52,24 @@ impl<'ctx> Sort<'ctx> {
     }
 
     pub fn string(ctx: &'ctx Context) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_string_sort(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_string_sort(**ctx)) }
     }
 
     pub fn bitvector(ctx: &'ctx Context, sz: u32) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_bv_sort(*ctx, sz as ::std::os::raw::c_uint)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_bv_sort(**ctx, sz as ::std::os::raw::c_uint)) }
     }
 
     pub fn array(ctx: &'ctx Context, domain: &Sort<'ctx>, range: &Sort<'ctx>) -> Sort<'ctx> {
         unsafe {
             Self::wrap_check_error(
                 ctx,
-                Z3_mk_array_sort(*ctx, *domain, *range),
+                Z3_mk_array_sort(**ctx, **domain, **range),
             )
         }
     }
 
     pub fn set(ctx: &'ctx Context, elt: &Sort<'ctx>) -> Sort<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_set_sort(*ctx, *elt)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_set_sort(**ctx, **elt)) }
     }
 
     pub fn seq(ctx: &'ctx Context, elt: &Sort<'ctx>) -> Sort<'ctx> {
@@ -110,37 +111,37 @@ impl<'ctx> Sort<'ctx> {
     ///
     /// assert!(model.eval(&eq, true).unwrap().as_bool().unwrap().as_bool().unwrap());
     /// ```
-    pub fn enumeration<S: Into<Symbol>>(
+    pub fn enumeration<S: Into<Symbol>, const N: usize>(
         ctx: &'ctx Context,
         name: impl Into<Symbol>,
-        enum_names: impl IntoIterator<Item = S>,
-    ) -> (Sort<'ctx>, Vec<FuncDecl<'ctx>>, Vec<FuncDecl<'ctx>>) {
+        enum_names: [S; N],
+    ) -> (Sort<'ctx>, [FuncDecl<'ctx>; N], [FuncDecl<'ctx>; N]) {
         use std::mem::MaybeUninit;
-        let mut name = name.into().as_z3_symbol(ctx);
-        let enum_names: Vec<_> = enum_names.into_iter().map(|s| s.into().as_z3_symbol(ctx)).collect();
-        let enum_count = enum_names.len();
-        let mut  enum_consts:Vec<MaybeUninit<*mut Z3_ast>> = vec![MaybeUninit::uninit; enum_count];
-        let mut enum_testers:Vec<MaybeUninit<*mut Z3_ast>> = vec![MaybeUninit::uninit; enum_count];
+        let name = name.into().as_z3_symbol(ctx);
+        // let enum_names: Vec<_> = enum_names.into_iter().map(|s| NonNull::new(s.into().as_z3_symbol(ctx)).unwrap()).collect();
+        let enum_names = enum_names.map(|s| s.into().as_z3_symbol(ctx));
+        let mut consts_testers:[MaybeUninit<[NonNull<Z3_ast>; N]>; 2] = [MaybeUninit::uninit(); 2];
+        // let mut  enum_consts:Vec<MaybeUninit<*mut Z3_ast>> = vec![MaybeUninit::uninit(); enum_count];
+        // let mut enum_testers:Vec<MaybeUninit<*mut Z3_ast>> = vec![MaybeUninit::uninit(); enum_count];
 
         let sort = unsafe {
             Self::wrap_check_error(
                 ctx,
                 Z3_mk_enumeration_sort(
-                    *ctx,
+                    **ctx,
                     name,
-                    enum_names.len().try_into().unwrap(),
+                    N.try_into().unwrap(),
                     enum_names.as_ptr(),
-                    enum_consts.as_mut_ptr(),
-                    enum_testers.as_mut_ptr(),
+                    consts_testers[0].as_mut_ptr().cast::<NonNull<Z3_ast>>(),
+                    consts_testers[1].as_mut_ptr().cast::<NonNull<Z3_ast>>(),
                 ),
             )
         };
 
-        let assume_init = |i| unsafe { i.assume_init() };
-        let enum_consts = enum_consts.map(assume_init);
-        let enum_testers = enum_testers.map(assume_init);
+        let enum_consts = unsafe { consts_testers[0].assume_init() };
+        let enum_testers = unsafe { consts_testers[1].assume_init() };
         
-        let make_func = |ast| unsafe { FuncDecl::wrap_check_error(self.ctx(), ast) };
+        let make_func = |ast| unsafe { FuncDecl::wrap(ctx, ast) };
         let enum_consts = enum_consts.map(make_func);
         let enum_testers = enum_testers.map(make_func);
 
@@ -148,21 +149,21 @@ impl<'ctx> Sort<'ctx> {
     }
 
     pub fn sort_kind(&self) -> SortKind {
-        self.check_error_pass(unsafe { Z3_get_sort_kind(*self.ctx(), *self) }).unwrap()
+        self.check_error_pass(unsafe { Z3_get_sort_kind(**self.ctx(), **self) }).unwrap()
     }
 
     /// Returns `Some(e)` where `e` is the number of exponent bits if the sort
     /// is a `FloatingPoint` and `None` otherwise.
     pub fn float_exponent_size(&self) -> Option<u32> {
-        if !self.sort_kind() == SortKind::FloatingPoint { return None; }
-        self.check_error_pass(unsafe { Z3_fpa_get_ebits(*self.ctx(), *self) }).ok()
+        if self.sort_kind() != SortKind::FloatingPoint { return None; }
+        self.check_error_pass(unsafe { Z3_fpa_get_ebits(**self.ctx(), **self) }).ok()
     }
 
     /// Returns `Some(s)` where `s` is the number of significand bits if the sort
     /// is a `FloatingPoint` and `None` otherwise.
     pub fn float_significand_size(&self) -> Option<u32> {
-        if !self.kind() == SortKind::FloatingPoint { return None; }
-        self.check_error_pass(unsafe { Z3_fpa_get_sbits(*self.ctx(), *self) }).ok()
+        if self.sort_kind() != SortKind::FloatingPoint { return None; }
+        self.check_error_pass(unsafe { Z3_fpa_get_sbits(**self.ctx(), **self) }).ok()
     }
 
     /// Return if this Sort is for an `Array` or a `Set`.
@@ -205,7 +206,7 @@ impl<'ctx> Sort<'ctx> {
     /// ```
     pub fn array_domain(&self) -> Option<Sort<'ctx>> {
         if !self.is_array() { return None; }
-        let domain_sort = unsafe{Z3_get_array_sort_domain(*self.ctx(), *self)};
+        let domain_sort = unsafe{Z3_get_array_sort_domain(**self.ctx(), **self)};
         let domain_sort = self.check_error_ptr(domain_sort).ok()?;
         Some(unsafe{
             Self::wrap(self.ctx(), domain_sort)
@@ -233,7 +234,7 @@ impl<'ctx> Sort<'ctx> {
     /// ```
     pub fn array_range(&self) -> Option<Sort<'ctx>> {
         if !self.is_array() { return None; }
-        let range_sort = unsafe { Z3_get_array_sort_range(*self.ctx(), *self) };
+        let range_sort = unsafe { Z3_get_array_sort_range(**self.ctx(), **self) };
         let range_sort = self.check_error_ptr(range_sort).ok()?;
         Some(unsafe{
             Self::wrap(self.ctx(), range_sort)

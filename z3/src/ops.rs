@@ -49,7 +49,7 @@ macro_rules! impl_binary_assign_op_raw {
         );
         impl<'ctx> $assign_trait<$rhs> for $ty {
             fn $assign_fn(&mut self, rhs: $rhs) {
-                *self = (self as &$ty).$function(&rhs as &$ty);
+                **self = (self as &$ty).$function(&rhs as &$ty);
             }
         }
     };
@@ -274,7 +274,7 @@ macro_rules! impl_binary_mult_op_assign_raw {
 
         impl<'ctx> $assign_trait<$rhs> for $ty {
             fn $assign_fn(&mut self, other: $rhs) {
-                *self = $base_ty::$function(self.get_ctx(), &[&self as &$ty, &other as &$ty])
+                **self = $base_ty::$function(self.get_ctx(), &[&self as &$ty, &other as &$ty])
             }
         }
     };
@@ -320,7 +320,7 @@ macro_rules! impl_binary_mult_op_assign_number_raw {
             fn $assign_fn(&mut self, rhs: $other) {
                 let c;
                 $construct_constant!(c, $other_fn, rhs, self);
-                *self = (&self as &$ty).$base_fn(&c as &$ty)
+                **self = (&self as &$ty).$base_fn(&c as &$ty)
             }
         }
     };

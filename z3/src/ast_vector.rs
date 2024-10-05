@@ -1,9 +1,10 @@
 use std::ops::Index;
 use std::iter::Iterator;
+use std::convert::TryInto;
 
 use z3_sys::*;
 
-use crate::{Context, ast::Dynamic, make_z3_object};
+use crate::{Context, HasContext, ast::Dynamic, ast::Bool, make_z3_object};
 
 make_z3_object! {
     pub struct AstVector<'ctx>
@@ -17,11 +18,11 @@ make_z3_object! {
 
 impl<'ctx> AstVector<'ctx> {
     pub fn new(ctx: &'ctx Context) -> Self {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_ast_vector(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_ast_vector(**ctx)) }
     }
 
     pub fn len(&self) -> u32 {
-        self.check_error_pass(unsafe{Z3_ast_vector_size(*self.ctx(), *self)}).unwrap()
+        self.check_error_pass(unsafe{Z3_ast_vector_size(**self.ctx(), **self)}).unwrap()
     }
 
     pub fn get(&self, i: u32) -> Option<Dynamic<'ctx>> {
@@ -30,9 +31,9 @@ impl<'ctx> AstVector<'ctx> {
     }
 
     pub unsafe fn get_unchecked(&self, i: u32) -> Dynamic<'ctx> {
-        let p = unsafe { Z3_ast_vector_get(*self.ctx(), *self, i) };
+        let p = unsafe { Z3_ast_vector_get(**self.ctx(), **self, i) };
         let p = self.check_error_ptr(p).unwrap();
-        unsafe { Bool::wrap(self.ctx(), p) }
+        unsafe { Dynamic::wrap(self.ctx(), p) }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = Dynamic<'ctx>> {
@@ -40,15 +41,6 @@ impl<'ctx> AstVector<'ctx> {
             vec: self.clone(),
             idx: 0,
         }
-    }
-}
-
-impl<'ctx> Index<usize> for AstVector<'ctx> {
-    type Output = Dynamic<'ctx>;
-
-    fn index(&self, idx: usize) -> Self::Output {
-        let idx:u32 = idx.try_into().expect("index out of range");
-        self.get(idx).expect("index out of range")
     }
 }
 
@@ -62,7 +54,7 @@ impl<'ctx> Iterator for AstIter<'ctx> {
     
     fn next(&mut self) -> Option<Self::Item> {
         if self.idx >= self.vec.len() { return None; }
-        let res = self.vec[self.idx];
+        let res = self.vec.get(self.idx).unwrap();
         self.idx += 1;
         Some(res)
     }
