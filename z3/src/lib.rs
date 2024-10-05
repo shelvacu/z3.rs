@@ -33,6 +33,7 @@ mod statistics;
 mod symbol;
 mod tactic;
 mod version;
+mod ast_vector;
 
 pub use crate::params::{get_global_param, reset_all_global_params, set_global_param};
 pub use crate::statistics::{StatisticsEntry, StatisticsValue};
@@ -57,6 +58,8 @@ macro_rules! make_Z3_object {
             sys_ty: $sys_ty:ident,
             inc_ref: $inc_ref:ident,
             dec_ref: $dec_ref:ident,
+            $(to_str: $to_str:ident,)
+            $(is_eq: $is_eq:ident,)
         ;
     ) => {
         $(#[$struct_meta])*
@@ -84,6 +87,11 @@ macro_rules! make_Z3_object {
                     _ctx: ctx,
                     _ptr: ptr,
                 }
+            }
+
+            unsafe pub fn wrap_check_errors(ctx: &'ctx $crate::Context, ptr: *mut $sys_ty) -> Self {
+                let checked_ptr = ctx.check_error_ptr(ptr).unwrap();
+                Self::wrap(ctx, checked_ptr)
             }
         }
 
@@ -113,39 +121,32 @@ macro_rules! make_Z3_object {
                 // panic!ing in drop is annoying, so don't do that, so don't call check_error since we're not going to do anything with the result
             }
         }
+
+        $(
+        impl<'ctx> ::std::fmt::Debug for $name<'ctx> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                let p = unsafe { $to_str(*self.ctx(), self._ptr) };
+                let p = self.check_error_ptr(p).map_err(|_| ::std::fmt::Error)?;
+                let z3_msg = unsafe { CStr::from_ptr(p) }.to_str().map_err(|_| ::std::fmt::Error)?;
+                write!(f, "{}({})", stringify!($name), z3_msg)
+            }
+        }
+        )?
+
+        $(
+        impl<'ctx> ::std::cmp::PartialEq<$name<'ctx>> for $name<'ctx> {
+            fn eq(&self, other: &$name<'ctx>) -> bool {
+                ctx.check_error_pass(unsafe { $is_eq(*self.ctx(), *self, *other) }).unwrap()
+            }
+        }
+
+        impl<'ctx> ::std::cmp::Eq for $name<'ctx> {}
+        )?
     };
 }
 
-/// Sorts represent the various 'types' of [`Ast`s](ast::Ast).
-//
-// Note for in-crate users: Never construct a `Sort` directly; only use
-// `Sort::new()` which handles Z3 refcounting properly.
-pub struct Sort<'ctx> {
-    ctx: &'ctx Context,
-    z3_sort: NonNull<Z3_sort>,
-}
-
-/// A struct to represent when two sorts are of different types.
-#[derive(Debug)]
-pub struct SortDiffers<'ctx> {
-    left: Sort<'ctx>,
-    right: Sort<'ctx>,
-}
-
-/// A struct to represent when an ast is not a function application.
-#[derive(Debug)]
-pub struct IsNotApp {
-    kind: AstKind,
-}
-
-/// (Incremental) solver, possibly specialized by a particular tactic or logic.
-//
-// Note for in-crate users: Never construct a `Solver` directly; only use
-// `Solver::new()` which handles Z3 refcounting properly.
-pub struct Solver<'ctx> {
-    ctx: &'ctx Context,
-    z3_slv: NonNull<Z3_solver>,
-}
+pub use sort::{Sort, SortDiffers};
+pub use ast::IsNotApp;
 
 /// Model for the constraints inserted into the logical context.
 //
