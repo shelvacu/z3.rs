@@ -6,7 +6,7 @@ use log::debug;
 
 use z3_sys::*;
 
-use crate::{Context, Model, Params, SatResult, Statistics, Symbol, AstVector, make_z3_object};
+use crate::{Context, HasContext, WrappedZ3, Model, Params, SatResult, Statistics, Symbol, AstVector, make_z3_object};
 use crate::ast::{self, Ast};
 
 make_z3_object! {
@@ -53,7 +53,7 @@ impl<'ctx> Solver<'ctx> {
     ///
     /// [model construction is enabled]: crate::Config::set_model_generation
     pub fn new(ctx: &'ctx Context) -> Self {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_solver(*ctx)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_solver(**ctx)) }
     }
 
     /// Parse an SMT-LIB2 string with assertions, soft constraints and optimization objectives.
@@ -69,7 +69,7 @@ impl<'ctx> Solver<'ctx> {
     /// It returns `None` if the logic is unknown or unsupported.
     pub fn new_for_logic<S: Into<Symbol>>(ctx: &'ctx Context, logic: S) -> Option<Self> {
         let sym = logic.into().as_z3_symbol(ctx);
-        let p = self.check_error_ptr( unsafe { Z3_mk_solver_for_logic(*ctx, logic.into().as_z3_symbol(ctx)) } ).ok()?;
+        let p = ctx.check_error_ptr( unsafe { Z3_mk_solver_for_logic(*ctx, logic.into().as_z3_symbol(ctx)) } ).ok()?;
         unsafe { Self::wrap(ctx, p) }
     }
 

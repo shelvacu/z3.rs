@@ -3,23 +3,23 @@ use std::ptr::NonNull;
 
 use z3_sys::*;
 
-use crate::Context;
+use crate::{Context, HasContext};
 
 /// Symbols are used to name several term and type constructors.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Symbol {
-    Int(u32),
+    Int(i32),
     String(String),
 }
 
 impl Symbol {
     pub fn as_z3_symbol(&self, ctx: &Context) -> NonNull<Z3_symbol> {
         match self {
-            Symbol::Int(i) => ctx.check_error_ptr(unsafe { Z3_mk_int_symbol(*ctx, *i as ::std::os::raw::c_int) }).unwrap(),
+            Symbol::Int(i) => ctx.check_error_ptr(unsafe { Z3_mk_int_symbol(**ctx, *i as ::std::os::raw::c_int) }).unwrap(),
             Symbol::String(s) => {
                 let ss = CString::new(s.clone()).unwrap();
                 let p = ss.as_ptr();
-                ctx.check_error_ptr(unsafe { Z3_mk_string_symbol(ctx.z3_ctx, p) }).unwrap()
+                ctx.check_error_ptr(unsafe { Z3_mk_string_symbol(**ctx, p) }).unwrap()
             }
         }
     }
@@ -28,23 +28,22 @@ impl Symbol {
     ///
     /// zptr must be a valid pointer
     pub unsafe fn from_z3_symbol(ctx: &Context, zptr: NonNull<Z3_symbol>) -> Self {
-        let symbol_kind = ctx.check_error_pass(Z3_get_symbol_kind(*ctx, zptr)).unwrap();
+        let symbol_kind = ctx.check_error_pass(Z3_get_symbol_kind(**ctx, zptr)).unwrap();
         match symbol_kind {
             SymbolKind::String => {
-                let cstr_ptr = ctx.check_error_ptr(Z3_get_symbol_string(*ctx, zptr)).unwrap();
-                let str = CStr::from_ptr(cstr_ptr).to_string_lossy().into_owned();
+                let str = ctx.check_error_str(Z3_get_symbol_string(**ctx, zptr)).unwrap();
                 Symbol::String(str)
             }
             SymbolKind::Int => {
-                let i = ctx.check_error_pass(Z3_get_symbol_int(*ctx, zptr)).unwrap();
+                let i = ctx.check_error_pass(Z3_get_symbol_int(**ctx, zptr)).unwrap();
                 Symbol::Int(i)
             }
         }
     }
 }
 
-impl From<u32> for Symbol {
-    fn from(val: u32) -> Self {
+impl From<i32> for Symbol {
+    fn from(val: i32) -> Self {
         Symbol::Int(val)
     }
 }

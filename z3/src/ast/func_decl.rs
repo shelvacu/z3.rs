@@ -3,7 +3,7 @@ use std::convert::{TryInto, TryFrom};
 use z3_sys::*;
 
 use crate::{Context, HasContext, Symbol};
-use crate::ast::{self, Sort, Dynamic};
+use crate::ast::{Ast, Sort, Dynamic};
 use super::{make_ast_object, impl_from_try_into_dynamic, unop, binop, trinop, varop};
 
 make_ast_object! {
@@ -31,17 +31,17 @@ impl<'ctx> FuncDecl<'ctx> {
         assert!(domain.iter().all(|s| s.ctx() == ctx));
         assert_eq!(ctx, range.ctx());
 
-        let domain: Vec<_> = domain.iter().map(|s| *s).collect();
+        let domain: Vec<_> = domain.iter().map(|s| ***s).collect();
         let sym = name.into().as_z3_symbol(ctx);
         unsafe {
             Self::wrap_check_error(
                 ctx,
                 Z3_mk_func_decl(
-                    *ctx,
+                    **ctx,
                     sym,
                     domain.len().try_into().unwrap(),
                     domain.as_ptr(),
-                    *range,
+                    **range,
                 ),
             )
         }
@@ -69,13 +69,13 @@ impl<'ctx> FuncDecl<'ctx> {
     /// Create a constant (if `args` has length 0) or function application (otherwise).
     ///
     /// Note that `args` should have the types corresponding to the `domain` of the `FuncDecl`.
-    pub fn apply(&self, args: &[&dyn ast::Ast<'ctx>]) -> ast::Dynamic<'ctx> {
-        assert!(args.iter().all(|s| s.get_ctx() == self.ctx()));
+    pub fn apply<T: Ast<'ctx>>(&self, args: &[T]) -> Dynamic<'ctx> {
+        assert!(args.iter().all(|s| s.ctx() == self.ctx()));
 
-        let args: Vec<_> = args.iter().map(|a| *a).collect();
+        let args: Vec<_> = args.iter().map(|a| **a).collect();
 
         unsafe {
-            ast::Dynamic::wrap_check_error(self.ctx, {
+            Dynamic::wrap_check_error(self.ctx(), {
                 Z3_mk_app(
                     **self.ctx(),
                     **self,
