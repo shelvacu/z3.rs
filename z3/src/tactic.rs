@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use z3_sys::*;
 
-use crate::{Context, HasContext, Goal, Params, Probe, Solver, make_z3_object};
+use crate::{Context, HasContext, WrappedZ3, Goal, Params, Probe, Solver, make_z3_object};
 
 make_z3_object! {
     /// Collection of subgoals resulting from applying of a tactic to a goal.
@@ -161,7 +161,7 @@ impl<'ctx> Tactic<'ctx> {
         unsafe {
             Self::wrap_check_error(
                 self.ctx(),
-                Z3_tactic_cond(**self.ctx(), p.z3_probe, **self, **t),
+                Z3_tactic_cond(**self.ctx(), **p, **self, **t),
             )
         }
     }

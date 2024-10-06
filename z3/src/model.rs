@@ -3,7 +3,7 @@ use std::mem::MaybeUninit;
 
 use z3_sys::*;
 
-use crate::{Context, FuncInterp, Optimize, Solver, make_z3_object};
+use crate::{Context, HasContext, WrappedZ3, FuncInterp, Optimize, Solver, make_z3_object};
 use crate::ast::{Ast, FuncDecl, Dynamic};
 
 make_z3_object! {
@@ -19,13 +19,13 @@ make_z3_object! {
 
 impl<'ctx> Model<'ctx> {
     pub fn of_solver(slv: &Solver<'ctx>) -> Option<Model<'ctx>> {
-        let m = unsafe { Z3_solver_get_model(*slv.ctx(), *slv) };
+        let m = unsafe { Z3_solver_get_model(**slv.ctx(), **slv) };
         let m = slv.check_error_ptr(m).ok()?;
         Some(unsafe{Self::wrap(slv.ctx(), m)})
     }
 
     pub fn of_optimize(opt: &Optimize<'ctx>) -> Option<Model<'ctx>> {
-        let m = unsafe { Z3_optimize_get_model(*opt.ctx(), *opt) };
+        let m = unsafe { Z3_optimize_get_model(**opt.ctx(), **opt) };
         let m = opt.check_error_ptr(m).ok()?;
         Some(unsafe { Self::wrap(opt.ctx(), m) })
     }
@@ -35,7 +35,7 @@ impl<'ctx> Model<'ctx> {
         unsafe {
             Model::wrap_check_error(
                 dest,
-                Z3_model_translate(**self.ctx(), **self, dest.z3_ctx),
+                Z3_model_translate(**self.ctx(), **self, **dest),
             )
         }
     }
@@ -47,7 +47,7 @@ impl<'ctx> Model<'ctx> {
         let ret =
             unsafe { Z3_model_get_const_interp(**self.ctx(), **self, *func) };
         let res = self.check_error_ptr(ret).ok()?;
-        Some(unsafe { T::wrap(self.ctx(), ret) })
+        Some(unsafe { T::wrap(self.ctx(), res) })
     }
 
     /// Returns the interpretation of the given `f` in the `Model`
@@ -55,24 +55,23 @@ impl<'ctx> Model<'ctx> {
     pub fn get_func_interp(&self, f: &FuncDecl) -> Option<FuncInterp<'ctx>> {
         if f.arity() == 0 {
             let ret = unsafe {
-                Dynamic::wrap(self.ctx(), Z3_model_get_const_interp(**self.ctx(), **self, *f))
+                Dynamic::wrap_check_error(self.ctx(), Z3_model_get_const_interp(**self.ctx(), **self, **f))
             };
             if !ret.is_as_array() { return None; }
             let range = f.range();
-            let sort_kind = range.kind();
-            if sort_kind != SortKind::Array { return None; }
+            if range.sort_kind() != SortKind::Array { return None; }
             let fd = unsafe {
                 FuncDecl::wrap_check_error(
-                    self.ctx,
+                    self.ctx(),
                     Z3_get_as_array_func_decl(**self.ctx(), *ret),
                 )
             };
             self.get_func_interp(&fd)
         } else {
             let ret =
-                unsafe { Z3_model_get_func_interp(**self.ctx(), **self, f.z3_func_decl) };
+                unsafe { Z3_model_get_func_interp(**self.ctx(), **self, **f) };
             let ret = self.check_error_ptr(ret).ok()?;
-            Some(unsafe { FuncInterp::wrap(self.ctx, ret) })
+            Some(unsafe { FuncInterp::wrap(self.ctx(), ret) })
         }
     }
 
@@ -80,15 +79,15 @@ impl<'ctx> Model<'ctx> {
     where
         T: Ast<'ctx>,
     {
-        let tmp:MaybeUninit<NonNull<Z3_ast>> = MaybeUninit::uninit();
+        let mut tmp:MaybeUninit<NonNull<Z3_ast>> = MaybeUninit::uninit();
         let res = {
             unsafe {
                 Z3_model_eval(
                     **self.ctx(),
                     **self,
-                    *ast,
+                    **ast,
                     model_completion,
-                    &mut tmp,
+                    tmp.as_mut_ptr(),
                 )
             }
         };
@@ -164,7 +163,7 @@ impl<'ctx> Iterator for ModelIter<'ctx> {
             }
         };
         self.idx += 1;
-        Some(unsafe { FuncDecl::wrap_check_error(**self.model.ctx(), decl) })
+        Some(unsafe { FuncDecl::wrap_check_error(self.model.ctx(), decl) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

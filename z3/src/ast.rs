@@ -1,10 +1,8 @@
 //! Abstract syntax tree (AST).
 
 use std::ops::Deref;
-use std::borrow::Borrow;
-use std::cmp::{Eq, PartialEq};
 use std::convert::{TryFrom, TryInto};
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::fmt;
 use std::ptr::NonNull;
 
@@ -23,6 +21,7 @@ mod sort;
 pub use sort::{Sort, SortDiffers};
 pub use func_decl::FuncDecl;
 pub use pattern::Pattern;
+pub use rec_func_decl::RecFuncDecl;
 
 /// A struct to represent when an ast is not a function application.
 #[derive(Debug)]
@@ -51,7 +50,7 @@ macro_rules! make_ast_object {
 
         impl<'a, 'b> $crate::ast::Translateable<$name<'a>> for $name<'b> {}
 
-        impl<'ctx> ::std::cmp::Eq for $name<'ctx> {}
+        // impl<'ctx> ::std::cmp::Eq for $name<'ctx> {}
 
         impl<'ctx> ::std::hash::Hash for $name<'ctx> {
             fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
@@ -61,6 +60,15 @@ macro_rules! make_ast_object {
                         Z3_get_ast_hash(**self._ctx, **self)
                     }
                 ).unwrap().hash(state)
+            }
+        }
+
+        impl<'ctx, T: $crate::ast::Ast<'ctx>> ::std::cmp::PartialEq<T> for $name<'ctx> {
+            fn eq(&self, other: &T) -> bool {
+                if self.ctx() != other.ctx() { return false; }
+                let res = unsafe { ::z3_sys::Z3_is_eq_ast(**self.ctx(), **self, **other) };
+                $crate::HasContext::check_error(self).unwrap();
+                res
             }
         }
     }
@@ -152,9 +160,12 @@ macro_rules! unop {
     ) => {
         $(
             $( #[ $attr ] )*
-            $v fn $f(&self) -> $retty {
+            $v fn $f(&self) -> $retty
+            where
+                $retty: Sized
+            {
                 unsafe {
-                    <$retty>::wrap_check_error(self.ctx(), {
+                    <$retty as $crate::WrappedZ3>::wrap_check_error(self.ctx(), {
                         $z3fn(**self.ctx(), **self)
                     })
                 }
@@ -172,10 +183,13 @@ macro_rules! binop {
     ) => {
         $(
             $( #[ $attr ] )*
-            $v fn $f(&self, other: &Self) -> $retty {
+            $v fn $f(&self, other: &Self) -> $retty
+            where
+                $retty: Sized
+            {
                 assert!(self.ctx() == other.ctx());
                 unsafe {
-                    <$retty>::wrap_check_error(self.ctx(), {
+                    <$retty as $crate::WrappedZ3>::wrap_check_error(self.ctx(), {
                         $z3fn(**self.ctx(), **self, **other)
                     })
                 }
@@ -193,10 +207,13 @@ macro_rules! trinop {
     ) => {
         $(
             $( #[ $attr ] )*
-            $v fn $f(&self, a: &Self, b: &Self) -> $retty {
+            $v fn $f(&self, a: &Self, b: &Self) -> $retty
+            where
+                $retty: Sized
+            {
                 assert!((self.ctx() == a.ctx()) && (a.ctx() == b.ctx()));
                 unsafe {
-                    <$retty>::wrap_check_error(self.ctx(), {
+                    <$retty as $crate::WrappedZ3>::wrap_check_error(self.ctx(), {
                         $z3fn(**self.ctx(), **self, **a, **b)
                     })
                 }
@@ -216,13 +233,13 @@ macro_rules! varop {
             $( #[ $attr ] )*
             $v fn $f(ctx: &'ctx Context, values: &[&Self]) -> $retty
             where
-                Self: Sized
+                $retty: Sized
             {
                 assert!(values.iter().all(|v| v.ctx() == ctx));
-                let tmp: Vec<_> = values.iter().map(|x| ***x).collect();
+                let tmp: Vec<NonNull<<Self as WrappedZ3>::Pointed>> = values.iter().map(|x| ***x).collect();
                 let len_u32 = tmp.len().try_into().unwrap();
                 unsafe {
-                    <$retty>::wrap_check_error(ctx, {
+                    <$retty as $crate::WrappedZ3>::wrap_check_error(ctx, {
                         $z3fn(**ctx, len_u32, tmp.as_ptr())
                     })
                 }
@@ -296,6 +313,8 @@ pub trait Ast<'ctx>: WrappedZ3<'ctx, Pointed = Z3_ast> + fmt::Debug + HasContext
     /// Performs substitution on the `Ast`. The slice `substitutions` contains a
     /// list of pairs with a "from" `Ast` that will be substituted by a "to" `Ast`.
     fn substitute<T: Ast<'ctx>, V: Ast<'ctx>>(&self, substitutions: &[(&T, &V)]) -> Self
+    where
+        Self: Sized
     {
         let this_ast = **self;
         let num_exprs:std::os::raw::c_uint = substitutions.len().try_into().unwrap();

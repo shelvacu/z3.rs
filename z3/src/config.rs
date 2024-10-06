@@ -1,9 +1,5 @@
-use log::debug;
 use std::ffi::CString;
-use std::ptr::NonNull;
 use std::convert::AsRef;
-
-use z3_sys::*;
 
 /// Configuration used to initialize [logical contexts](Context).
 ///
@@ -44,7 +40,7 @@ impl Config {
     pub fn set_param_value(&mut self, k: impl AsRef<str>, v: impl AsRef<str>) {
         let ks = CString::new(k.as_ref()).unwrap();
         let vs = CString::new(v.as_ref()).unwrap();
-        let (kr, vr) = self.kvs.push((ks, vs));
+        self.kvs.push((ks, vs));
     }
 
     /// Set a configuration parameter.
@@ -90,11 +86,5 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Drop for Config {
-    fn drop(&mut self) {
-        unsafe { Z3_del_config(self.z3_cfg) };
     }
 }

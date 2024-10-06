@@ -174,7 +174,7 @@ pub type Z3_pattern = Z3_ast;
 /// Z3 string type. It is just an alias for `const char *`.
 pub type Z3_string = *const ::std::os::raw::c_char;
 
-pub type Z3_string_ptr = Z3_string;
+pub type Z3_string_ptr = *mut Z3_string;
 
 /// Lifted Boolean type: `false`, `undefined`, `true`.
 #[repr(i32)]
@@ -1507,7 +1507,7 @@ extern "C" {
     ///
     /// NOTE: This function cannot be invoked simultaneously from different threads without synchronization.
     /// The result string stored in `param_value` is stored in shared location.
-    pub fn Z3_global_param_get(param_id: Z3_string, param_value: NonNull<Z3_string_ptr>) -> bool;
+    pub fn Z3_global_param_get(param_id: Z3_string, param_value: Z3_string_ptr) -> bool;
 
     /// Create a configuration object for the Z3 context object.
     ///
@@ -1894,7 +1894,7 @@ extern "C" {
         recognizer: NonNull<Z3_symbol>,
         num_fields: ::std::os::raw::c_uint,
         field_names: *const NonNull<Z3_symbol>,
-        sorts: *const NonNull<Z3_sort>,
+        sorts: *const *mut Z3_sort,
         sort_refs: *mut ::std::os::raw::c_uint,
     ) -> *mut Z3_constructor;
 
@@ -2206,7 +2206,7 @@ extern "C" {
     /// All arguments must have Boolean sort.
     ///
     /// NOTE: The number of arguments must be greater than zero.
-    pub fn Z3_mk_or(c: NonNull<Z3_context>, num_args: ::std::os::raw::c_uint, args: *const Z3_ast)
+    pub fn Z3_mk_or(c: NonNull<Z3_context>, num_args: ::std::os::raw::c_uint, args: *const NonNull<Z3_ast>)
         -> *mut Z3_ast;
 
     /// Create an AST node representing `args[0] + ... + args[num_args-1]`.
@@ -3014,14 +3014,14 @@ extern "C" {
     /// # Preconditions:
     ///
     /// - `n > 0`
-    pub fn Z3_mk_re_union(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, args: *const Z3_ast) -> *mut Z3_ast;
+    pub fn Z3_mk_re_union(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, args: *const NonNull<Z3_ast>) -> *mut Z3_ast;
 
     /// Create the concatenation of the regular languages.
     ///
     /// # Preconditions:
     ///
     /// - `n > 0`
-    pub fn Z3_mk_re_concat(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, args: *const Z3_ast)
+    pub fn Z3_mk_re_concat(c: NonNull<Z3_context>, n: ::std::os::raw::c_uint, args: *const NonNull<Z3_ast>)
         -> *mut Z3_ast;
 
     /// Create the range regular expression over two sequences of length 1.
@@ -6471,7 +6471,7 @@ extern "C" {
         o: NonNull<Z3_optimize>,
         a: NonNull<Z3_ast>,
         weight: Z3_string,
-        id: NonNull<Z3_symbol>,
+        id: *mut Z3_symbol,
     ) -> ::std::os::raw::c_uint;
 
     /// Add a maximization constraint.

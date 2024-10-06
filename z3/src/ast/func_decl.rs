@@ -2,7 +2,7 @@ use std::convert::{TryInto, TryFrom};
 
 use z3_sys::*;
 
-use crate::{Context, HasContext, Symbol};
+use crate::{Context, HasContext, WrappedZ3, Symbol};
 use crate::ast::{Ast, Sort, Dynamic};
 use super::{make_ast_object, impl_from_try_into_dynamic, unop, binop, trinop, varop};
 

@@ -1,11 +1,10 @@
 use std::convert::TryInto;
-use std::ffi::CStr;
 use std::fmt;
 use std::ptr::NonNull;
 
 use z3_sys::*;
 
-use crate::{Context, HasContext, Symbol};
+use crate::{Context, HasContext, WrappedZ3, Symbol};
 use crate::ast::FuncDecl;
 
 use super::make_ast_object;

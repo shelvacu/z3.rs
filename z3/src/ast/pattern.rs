@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use z3_sys::*;
 
-use crate::{ast::Ast, Context};
+use crate::{ast::Ast, Context, HasContext, WrappedZ3};
 
 use super::make_ast_object;
 

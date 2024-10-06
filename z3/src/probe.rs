@@ -4,7 +4,7 @@ use std::result::Result;
 
 use z3_sys::*;
 
-use crate::{Context, HasContext, Goal, make_z3_object};
+use crate::{Context, HasContext, WrappedZ3, Goal, make_z3_object};
 
 make_z3_object! {
     /// Function/predicate used to inspect a goal and collect information
@@ -46,7 +46,7 @@ impl<'ctx> Probe<'ctx> {
     /// the given `name`.
     pub fn describe(ctx: &'ctx Context, name: &str) -> String {
         let probe_name = CString::new(name).unwrap();
-        ctx.check_error_str(unsafe { Z3_probe_get_descr(**ctx, probe_name.as_ptr()) })
+        ctx.check_error_str(unsafe { Z3_probe_get_descr(**ctx, probe_name.as_ptr()) }).unwrap()
     }
 
     /// Return a probe associated with the given `name`.
