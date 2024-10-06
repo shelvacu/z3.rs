@@ -3,23 +3,24 @@ use std::ops::{
     Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Sub, SubAssign,
 };
 
+use crate::{Context, HasContext, WrappedZ3};
 use crate::ast::{Ast, Bool, Float, Int, Real, BV};
 
 macro_rules! mk_const_bv {
     ($constant:expr, $function:ident, $val:expr, $other:expr) => {
-        $constant = BV::$function($other.get_ctx(), $val, $other.get_size());
+        $constant = BV::$function($other.ctx(), $val, $other.get_size());
     };
 }
 
 macro_rules! mk_const_int {
     ($constant:expr, $function:ident, $val:expr, $other:expr) => {
-        $constant = Int::$function($other.get_ctx(), $val);
+        $constant = Int::$function($other.ctx(), $val);
     };
 }
 
 macro_rules! mk_const_bool {
     ($constant:expr, $function:ident, $val:expr, $other:expr) => {
-        $constant = Bool::from_bool($other.get_ctx(), $val);
+        $constant = Bool::from_bool($other.ctx(), $val);
     };
 }
 
@@ -49,7 +50,7 @@ macro_rules! impl_binary_assign_op_raw {
         );
         impl<'ctx> $assign_trait<$rhs> for $ty {
             fn $assign_fn(&mut self, rhs: $rhs) {
-                **self = (self as &$ty).$function(&rhs as &$ty);
+                *self = (self as &$ty).$function(&rhs as &$ty);
             }
         }
     };
@@ -262,7 +263,7 @@ macro_rules! impl_binary_mult_op_raw {
             type Output = $output;
 
             fn $base_fn(self, other: $rhs) -> Self::Output {
-                $base_ty::$function(self.get_ctx(), &[&self as &$output, &other as &$output])
+                $base_ty::$function(self.ctx(), &[&self as &$output, &other as &$output])
             }
         }
     };
@@ -274,7 +275,7 @@ macro_rules! impl_binary_mult_op_assign_raw {
 
         impl<'ctx> $assign_trait<$rhs> for $ty {
             fn $assign_fn(&mut self, other: $rhs) {
-                **self = $base_ty::$function(self.get_ctx(), &[&self as &$ty, &other as &$ty])
+                *self = $base_ty::$function(self.ctx(), &[&self as &$ty, &other as &$ty])
             }
         }
     };
@@ -320,7 +321,7 @@ macro_rules! impl_binary_mult_op_assign_number_raw {
             fn $assign_fn(&mut self, rhs: $other) {
                 let c;
                 $construct_constant!(c, $other_fn, rhs, self);
-                **self = (&self as &$ty).$base_fn(&c as &$ty)
+                *self = (&self as &$ty).$base_fn(&c as &$ty)
             }
         }
     };

@@ -5,6 +5,7 @@
 #![allow(clippy::unreadable_literal)]
 #![warn(clippy::doc_markdown)]
 #![deny(missing_debug_implementations)]
+#![deny(unused_must_use)]
 
 use std::ptr::NonNull;
 use std::ffi::CStr;
@@ -145,76 +146,9 @@ pub use optimize::Optimize;
 pub use symbol::Symbol;
 pub use solver::Solver;
 pub use func_interp::FuncInterp;
-
+pub use func_entry::FuncEntry;
 pub use z3_sys::DeclKind;
-
-/// Build a custom [datatype sort](DatatypeSort).
-///
-/// Example:
-/// ```
-/// # use z3::{ast::Int, Config, Context, DatatypeAccessor, DatatypeBuilder, SatResult, Solver, Sort, ast::{Ast, Datatype}};
-/// # let cfg = Config::new();
-/// # let ctx = Context::new(&cfg);
-/// # let solver = Solver::new(&ctx);
-/// // Like Rust's Option<int> type
-/// let option_int = DatatypeBuilder::new(&ctx, "OptionInt")
-/// .variant("None", vec![])
-/// .variant(
-///     "Some",
-///     vec![("value", DatatypeAccessor::Sort(Sort::int(&ctx)))],
-/// )
-/// .finish();
-///
-/// // Assert x.is_none()
-/// let x = Datatype::new_const(&ctx, "x", &option_int.sort);
-/// solver.assert(&option_int.variants[0].tester.apply(&[&x]).as_bool().unwrap());
-///
-/// // Assert y == Some(3)
-/// let y = Datatype::new_const(&ctx, "y", &option_int.sort);
-/// let value = option_int.variants[1].constructor.apply(&[&Int::from_i64(&ctx, 3)]);
-/// solver.assert(&y._eq(&value.as_datatype().unwrap()));
-///
-/// assert_eq!(solver.check(), SatResult::Sat);
-/// let model = solver.get_model().unwrap();;
-///
-/// // Get the value out of Some(3)
-/// let ast = option_int.variants[1].accessors[0].apply(&[&y]);
-/// assert_eq!(3, model.eval(&ast.as_int().unwrap(), true).unwrap().as_i64().unwrap());
-/// ```
-#[derive(Debug)]
-pub struct DatatypeBuilder<'ctx> {
-    ctx: &'ctx Context,
-    name: Symbol,
-    constructors: Vec<(String, Vec<(String, DatatypeAccessor<'ctx>)>)>,
-}
-
-/// Wrapper which can point to a sort (by value) or to a custom datatype (by name).
-#[derive(Debug)]
-pub enum DatatypeAccessor<'ctx> {
-    Sort(ast::Sort<'ctx>),
-    Datatype(Symbol),
-}
-
-/// Inner variant for a custom [datatype sort](DatatypeSort).
-#[derive(Debug)]
-pub struct DatatypeVariant<'ctx> {
-    pub constructor: ast::FuncDecl<'ctx>,
-    pub tester: ast::FuncDecl<'ctx>,
-    pub accessors: Vec<ast::FuncDecl<'ctx>>,
-}
-
-/// A custom datatype sort.
-#[derive(Debug)]
-pub struct DatatypeSort<'ctx> {
-    pub sort: ast::Sort<'ctx>,
-    pub variants: Vec<DatatypeVariant<'ctx>>,
-}
-
-/// Parameter set used to configure many components (simplifiers, tactics, solvers, etc).
-pub struct Params<'ctx> {
-    ctx: &'ctx Context,
-    z3_params: NonNull<Z3_params>,
-}
+pub use params::Params;
 
 /// Result of a satisfiability query.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

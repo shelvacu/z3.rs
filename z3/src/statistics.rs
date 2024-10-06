@@ -50,7 +50,7 @@ impl<'ctx> Statistics<'ctx> {
     }
 
     fn key_at_idx(&self, idx: u32) -> String {
-        self.check_error_str(unsafe { Z3_stats_get_key(**self.ctx(), **self, idx) })
+        self.check_error_str(unsafe { Z3_stats_get_key(**self.ctx(), **self, idx) }).unwrap()
     }
 
     pub fn len(&self) -> u32 {

@@ -2,7 +2,7 @@ use std::ffi::CStr;
 
 use z3_sys::*;
 
-use crate::{Context, HasContext, make_z3_object};
+use crate::{Context, HasContext, WrappedZ3, make_z3_object};
 use crate::ast::{self, Ast, Bool, Dynamic, unop, binop, trinop, varop};
 
 make_z3_object! {
@@ -19,12 +19,12 @@ make_z3_object! {
 impl<'ctx> Goal<'ctx> {
     /// NOTE: The Z3 context ctx must have been created with proof generation support.
     pub fn new(ctx: &'ctx Context, models: bool, unsat_cores: bool, proofs: bool) -> Goal<'ctx> {
-        unsafe { Self::wrap_check_error(ctx, Z3_mk_goal(*ctx, models, unsat_cores, proofs)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_goal(**ctx, models, unsat_cores, proofs)) }
     }
 
     /// Add a new formula `a` to the given goal.
     pub fn assert(&self, ast: &Bool<'ctx>) {
-        unsafe { Z3_goal_assert(**self.ctx(), **self, *ast) };
+        unsafe { Z3_goal_assert(**self.ctx(), **self, **ast) };
         self.check_error().unwrap();
     }
 
@@ -60,7 +60,7 @@ impl<'ctx> Goal<'ctx> {
     /// Erase all formulas from the given goal.
     pub fn reset(&self) {
         unsafe { Z3_goal_reset(**self.ctx(), **self) };
-        self.check_error();
+        self.check_error().unwrap();
     }
 
     /// Copy a goal `g` from its current context to the context `target`.
@@ -69,7 +69,7 @@ impl<'ctx> Goal<'ctx> {
         unsafe {
             Goal::wrap_check_error(
                 target,
-                Z3_goal_translate(**self.ctx(), **self, *target),
+                Z3_goal_translate(**self.ctx(), *self, **target),
             )
         }
     }
@@ -87,7 +87,7 @@ impl<'ctx> Goal<'ctx> {
         (0..goal_size).map(move |i| {
             let formula = unsafe { Z3_goal_formula(z3_ctx, z3_goal, i) };
             let formula = self.check_error_ptr(formula).unwrap();
-            unsafe { Dynamic::wrap(self.ctx, formula) }
+            unsafe { Dynamic::wrap(self.ctx(), formula) }
         })
     }
 

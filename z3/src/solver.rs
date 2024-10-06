@@ -1,4 +1,5 @@
 use std::ffi::{CStr, CString};
+use std::convert::TryInto;
 use std::ops::{AddAssign, Deref};
 use std::ptr::NonNull;
 
@@ -58,26 +59,27 @@ impl<'ctx> Solver<'ctx> {
 
     /// Parse an SMT-LIB2 string with assertions, soft constraints and optimization objectives.
     /// Add the parsed constraints and objectives to the solver.
-    pub fn from_smtlib(&self, source: impl Into<Vec<[u8]>>) {
+    pub fn from_smtlib(&self, source: impl Into<Vec<u8>>) {
         let source_cstring = CString::new(source).unwrap();
-        let p = self.check_error_ptr(unsafe {
+        unsafe {
             Z3_solver_from_string(**self.ctx(), **self, source_cstring.as_ptr());
-        }).unwrap();
+        };
+        self.check_error().unwrap();
     }
 
     /// Create a new solver customized for the given logic.
     /// It returns `None` if the logic is unknown or unsupported.
     pub fn new_for_logic<S: Into<Symbol>>(ctx: &'ctx Context, logic: S) -> Option<Self> {
         let sym = logic.into().as_z3_symbol(ctx);
-        let p = ctx.check_error_ptr( unsafe { Z3_mk_solver_for_logic(*ctx, logic.into().as_z3_symbol(ctx)) } ).ok()?;
-        unsafe { Self::wrap(ctx, p) }
+        let p = ctx.check_error_ptr( unsafe { Z3_mk_solver_for_logic(**ctx, sym) } ).ok()?;
+        Some(unsafe { Self::wrap(ctx, p) })
     }
 
     pub fn translate<'dest_ctx>(&self, dest: &'dest_ctx Context) -> Solver<'dest_ctx> {
         unsafe {
             Solver::wrap(
                 dest,
-                self.check_error_ptr(Z3_solver_translate(**self.ctx(), **self, *dest)).unwrap(),
+                self.check_error_ptr(Z3_solver_translate(**self.ctx(), **self, **dest)).unwrap(),
             )
         }
     }
@@ -106,7 +108,7 @@ impl<'ctx> Solver<'ctx> {
     /// - [`Solver::assert_and_track()`]
     pub fn assert(&self, ast: &ast::Bool<'ctx>) {
         debug!("assert: {:?}", ast);
-        unsafe { Z3_solver_assert(**self.ctx(), **self, *ast) };
+        unsafe { Z3_solver_assert(**self.ctx(), **self, **ast) };
         self.check_error().unwrap();
     }
 
@@ -126,7 +128,7 @@ impl<'ctx> Solver<'ctx> {
     /// - [`Solver::assert()`]
     pub fn assert_and_track(&self, ast: &ast::Bool<'ctx>, p: &ast::Bool<'ctx>) {
         debug!("assert_and_track: {:?}", ast);
-        unsafe { Z3_solver_assert_and_track(**self.ctx(), **self, ast.z3_ast, p.z3_ast) };
+        unsafe { Z3_solver_assert_and_track(**self.ctx(), **self, **ast, **p) };
         self.check_error().unwrap();
     }
 
@@ -164,7 +166,6 @@ impl<'ctx> Solver<'ctx> {
             Z3_L_FALSE => SatResult::Unsat,
             Z3_L_UNDEF => SatResult::Unknown,
             Z3_L_TRUE => SatResult::Sat,
-            _ => unreachable!(),
         }
     }
 
@@ -178,8 +179,8 @@ impl<'ctx> Solver<'ctx> {
     /// # See also:
     ///
     /// - [`Solver::check()`]
-    pub fn check_assumptions(&self, assumptions: &[ast::Bool<'ctx>]) -> SatResult {
-        let a: Vec<NonNull<Z3_ast>> = assumptions.iter().map(Deref::deref).collect();
+    pub fn check_assumptions(&self, assumptions: &[&ast::Bool<'ctx>]) -> SatResult {
+        let a: Vec<NonNull<Z3_ast>> = assumptions.iter().map(|b| ***b).collect();
         let len:u32 = a.len().try_into().unwrap();
         let res = unsafe {
             Z3_solver_check_assumptions(**self.ctx(), **self, len, a.as_ptr())
@@ -189,7 +190,6 @@ impl<'ctx> Solver<'ctx> {
             Z3_L_FALSE => SatResult::Unsat,
             Z3_L_UNDEF => SatResult::Unknown,
             Z3_L_TRUE => SatResult::Sat,
-            _ => unreachable!(),
         }
     }
 
@@ -227,7 +227,7 @@ impl<'ctx> Solver<'ctx> {
             Ok(v) => v,
             Err(_) => return vec![],
         };
-        let zvec = unsafe { AstVector::wrap(**self.ctx(), p) };
+        let zvec = unsafe { AstVector::wrap(self.ctx(), p) };
         zvec.iter().map(|ast| ast.as_bool().unwrap()).collect()
     }
 
@@ -237,22 +237,23 @@ impl<'ctx> Solver<'ctx> {
         assumptions: &[ast::Bool<'ctx>],
         variables: &[ast::Bool<'ctx>],
     ) -> Vec<ast::Bool<'ctx>> {
-        let assumptions_z = AstVector::new();
+        let assumptions_z = AstVector::new(self.ctx());
         for ast in assumptions {
-            assumptions_z.push(ast.into());
+            assumptions_z.push(&ast.clone().into());
         }
-        let variables_z = AstVector::new();
+        let variables_z = AstVector::new(self.ctx());
         for ast in variables {
-            variables_z.push(ast.into());
+            variables_z.push(&ast.clone().into());
         }
-        let consequences_z = AstVector::new();
-        self.check_error_bool(unsafe { Z3_solver_get_consequences(
+        let consequences_z = AstVector::new(self.ctx());
+        unsafe { Z3_solver_get_consequences(
             **self.ctx(),
             **self,
             *assumptions_z,
             *variables_z,
             *consequences_z,
-        )}).unwrap();
+        )};
+        self.check_error().unwrap();
         consequences_z.iter().map(|ast| ast.as_bool().unwrap()).collect()
     }
 
@@ -275,7 +276,7 @@ impl<'ctx> Solver<'ctx> {
     /// - [`Solver::push()`]
     pub fn pop(&self, n: u32) {
         unsafe { Z3_solver_pop(**self.ctx(), **self, n) };
-        self.check_error.unwrap();
+        self.check_error().unwrap();
     }
 
     /// Retrieve the model for the last [`Solver::check()`]
@@ -314,17 +315,13 @@ impl<'ctx> Solver<'ctx> {
     /// and [`Solver::check_assumptions()`].
     pub fn get_reason_unknown(&self) -> Option<String> {
         let p = unsafe { Z3_solver_get_reason_unknown(**self.ctx(), **self) };
-        let p = self.check_error_ptr(p).ok()?;
-        unsafe { CStr::from_ptr(p) }
-            .to_str()
-            .ok()
-            .map(|s| s.to_string())
+        self.check_error_str(p).ok()
     }
 
     /// Set the current solver using the given parameters.
     pub fn set_params(&self, params: &Params<'ctx>) {
-        unsafe { Z3_solver_set_params(**self.ctx(), **self, params.z3_params) };
-        self.check_error();
+        unsafe { Z3_solver_set_params(**self.ctx(), **self, **params) };
+        self.check_error().unwrap();
     }
 
     /// Retrieve the statistics for the last [`Solver::check()`].
