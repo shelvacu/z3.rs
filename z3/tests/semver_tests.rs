@@ -1,7 +1,7 @@
 use log::info;
 use semver::{Version, VersionReq};
 use std::collections::HashMap;
-use z3::ast::Ast;
+use z3::ast::*;
 use z3::*;
 
 struct Spec {
@@ -140,8 +140,7 @@ fn test_solve_simple_semver_example() {
         .collect(),
     );
 
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let opt = Optimize::new(&ctx);
 
     let mut root: HashMap<String, VersionReq> = HashMap::new();

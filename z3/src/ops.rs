@@ -3,8 +3,8 @@ use std::ops::{
     Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Sub, SubAssign,
 };
 
-use crate::{Context, HasContext, WrappedZ3};
-use crate::ast::{Ast, Bool, Float, Int, Real, BV};
+use crate::HasContext;
+use crate::ast::{Bool, Float, Int, Real, BV};
 
 macro_rules! mk_const_bv {
     ($constant:expr, $function:ident, $val:expr, $other:expr) => {

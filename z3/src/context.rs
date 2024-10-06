@@ -40,6 +40,12 @@ impl<'a> HasContext<'a> for &'a Context {
     }
 }
 
+impl std::default::Default for Context {
+    fn default() -> Self {
+        Self::new(Config::default())
+    }
+}
+
 impl Context {
     pub fn new(cfg: Config) -> Context {
         let z3_cfg = unsafe { Z3_mk_config() };

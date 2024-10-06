@@ -1,12 +1,9 @@
 use std::convert::TryInto;
-use std::ffi::CStr;
-use std::fmt;
-use std::ops::Deref;
 
 use z3_sys::*;
 
 use crate::{Context, Symbol, HasContext, WrappedZ3};
-use crate::ast::{self, Ast, FuncDecl, Sort, make_ast_object, unop};
+use crate::ast::{Ast, FuncDecl, Sort, make_ast_object, unop};
 
 make_ast_object! {
     /// Recursive function declaration. Every function has an associated declaration.

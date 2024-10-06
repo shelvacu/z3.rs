@@ -1,4 +1,4 @@
-use std::ffi::{CString, CStr};
+use std::ffi::CString;
 use std::ptr::NonNull;
 
 use z3_sys::*;

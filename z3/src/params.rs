@@ -1,5 +1,4 @@
 use std::ffi::{CStr, CString};
-use std::fmt;
 
 use z3_sys::*;
 

@@ -1,9 +1,8 @@
-use std::ffi::CStr;
 
 use z3_sys::*;
 
 use crate::{Context, HasContext, WrappedZ3, make_z3_object};
-use crate::ast::{self, Ast, Bool, Dynamic, unop, binop, trinop, varop};
+use crate::ast::{Bool, Dynamic};
 
 make_z3_object! {
     /// Set of formulas that can be solved and/or transformed using tactics and solvers.
