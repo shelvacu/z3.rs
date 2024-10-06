@@ -33,17 +33,17 @@ impl<'ctx> RecFuncDecl<'ctx> {
         assert!(domain.iter().all(|s| s.ctx() == ctx));
         assert_eq!(ctx, range.ctx());
 
-        let domain: Vec<_> = domain.iter().map(|s| **s).collect();
-
+        let domain: Vec<_> = domain.iter().map(|s| ***s).collect();
+        let sym = name.into().as_z3_symbol(ctx);
         unsafe {
-            Self::wrap(
+            Self::wrap_check_error(
                 ctx,
                 Z3_mk_rec_func_decl(
-                    ctx.z3_ctx,
-                    name.into().as_z3_symbol(ctx),
+                    **ctx,
+                    sym,
                     domain.len().try_into().unwrap(),
                     domain.as_ptr(),
-                    range.z3_sort,
+                    **range,
                 ),
             )
         }
@@ -87,23 +87,43 @@ impl<'ctx> RecFuncDecl<'ctx> {
     /// ```
     ///
     /// Note that `args` should have the types corresponding to the `domain` of the `RecFuncDecl`.
-    pub fn add_def(&self, args: &[&dyn ast::Ast<'ctx>], body: &dyn Ast<'ctx>) {
+    pub fn add_def<T: Ast<'ctx>>(&self, args: &[T], body: impl Ast<'ctx>) {
         assert!(args.iter().all(|arg| arg.ctx() == body.ctx()));
         assert_eq!(self.ctx(), body.ctx());
 
         let mut args: Vec<_> = args.iter().map(|s| **s).collect();
-        assert_eq!(body.get_sort(), self.get_range());
+        assert_eq!(body.sort(), self.get_range());
         unsafe {
             Z3_add_rec_def(
                 **self.ctx(),
                 **self,
                 self.arity(),
                 args.as_mut_ptr(),
-                body.get_z3_ast(),
+                *body,
             );
         };
         self.check_error().unwrap();
     }
+
+    /// Return the number of arguments of a function declaration.
+    ///
+    /// If the function declaration is a constant, then the arity is `0`.
+    ///
+    /// ```
+    /// # use z3::{Config, Context, FuncDecl, Solver, Sort, Symbol};
+    /// # let cfg = Config::new();
+    /// # let ctx = Context::new(&cfg);
+    /// let f = FuncDecl::new(
+    ///     &ctx,
+    ///     "f",
+    ///     &[&Sort::int(&ctx), &Sort::real(&ctx)],
+    ///     &Sort::int(&ctx));
+    /// assert_eq!(f.arity(), 2);
+    /// ```
+    pub fn arity(&self) -> u32 {
+        self.check_error_pass(unsafe { Z3_get_arity(**self.ctx(), **self)}).unwrap()
+    }
+
 
     pub fn as_func_decl(&self) -> FuncDecl<'ctx> {
         unsafe { FuncDecl::wrap(self.ctx(), **self) }

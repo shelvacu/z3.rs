@@ -1,5 +1,4 @@
 use std::convert::TryInto;
-use std::ffi::CStr;
 
 use z3_sys::*;
 
@@ -32,11 +31,11 @@ impl<'ctx> Pattern<'ctx> {
     ///
     /// - `ast::forall_const()`
     /// - `ast::exists_const()`
-    pub fn new(ctx: &'ctx Context, terms: &[&dyn Ast]) -> Self {
+    pub fn new<T: Ast<'ctx>>(ctx: &'ctx Context, terms: &[T]) -> Self {
         assert!(!terms.is_empty());
         assert!(terms.iter().all(|t| t.ctx() == ctx));
 
-        let terms: Vec<_> = terms.iter().map(|t| t.get_z3_ast()).collect();
-        unsafe { Pattern::wrap_check_error(*ctx, Z3_mk_pattern(*ctx, terms.len().try_into().unwrap(), terms.as_ptr())) }
+        let terms: Vec<_> = terms.iter().map(|t| **t).collect();
+        unsafe { Pattern::wrap_check_error(ctx, Z3_mk_pattern(**ctx, terms.len().try_into().unwrap(), terms.as_ptr())) }
     }
 }

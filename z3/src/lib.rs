@@ -8,6 +8,7 @@
 
 use std::ptr::NonNull;
 use std::ffi::CStr;
+use std::ops::Deref;
 use z3_sys::*;
 use crate::error::*;
 pub use z3_sys::{AstKind, GoalPrec, SortKind};
@@ -56,7 +57,9 @@ macro_rules! make_z3_object {
             _ptr: ::std::ptr::NonNull<$sys_ty>,
         }
 
-        impl<'ctx> $name<'ctx> {
+        impl<'ctx> $crate::WrappedZ3<'ctx> for $name<'ctx> {
+            type Pointed = $sys_ty;
+
             /// Wraps a raw [`$sys_ty`]
             ///
             /// Nearly every function in z3-sys has the possibility of returning null and setting
@@ -68,18 +71,13 @@ macro_rules! make_z3_object {
             /// ### Safety
             ///
             /// `ptr` must be a valid pointer to a [`$sys_ty`]
-            pub unsafe fn wrap(ctx: &'ctx $crate::Context, ptr: ::std::ptr::NonNull<$sys_ty>) -> Self {
+            unsafe fn wrap(ctx: &'ctx $crate::Context, ptr: ::std::ptr::NonNull<$sys_ty>) -> Self {
                 $inc_ref(**ctx, ptr);
                 $crate::HasContext::check_error(&ctx).unwrap();
                 Self {
                     _ctx: ctx,
                     _ptr: ptr,
                 }
-            }
-
-            pub unsafe fn wrap_check_error(ctx: &'ctx $crate::Context, ptr: *mut $sys_ty) -> Self {
-                let checked_ptr = $crate::HasContext::check_error_ptr(&ctx, ptr).unwrap();
-                Self::wrap(ctx, checked_ptr)
             }
         }
 
@@ -99,7 +97,7 @@ macro_rules! make_z3_object {
 
         impl<'ctx> ::std::clone::Clone for $name<'ctx> {
             fn clone(&self) -> Self {
-                unsafe { Self::wrap(self._ctx, **self) }
+                unsafe { <Self as $crate::WrappedZ3>::wrap(self._ctx, **self) }
             }
         }
 
@@ -113,10 +111,8 @@ macro_rules! make_z3_object {
         $(
         impl<'ctx> ::std::fmt::Debug for $name<'ctx> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                let p = unsafe { $to_str(**self._ctx, self._ptr) };
-                let p = $crate::HasContext::check_error_ptr(self, p).map_err(|_| ::std::fmt::Error)?;
-                let z3_msg = unsafe { ::std::ffi::CStr::from_ptr(p) }.to_str().map_err(|_| ::std::fmt::Error)?;
-                write!(f, "{}({})", stringify!($name), z3_msg)
+                let msg = $crate::HasContext::check_error_str(self, unsafe { $to_str(**self._ctx, self._ptr) }).map_err(|_| ::std::fmt::Error)?;
+                write!(f, "{}({})", stringify!($name), msg)
             }
         }
         )?
@@ -125,26 +121,30 @@ macro_rules! make_z3_object {
 
 pub(crate) use make_z3_object;
 
+pub trait WrappedZ3<'ctx>: HasContext<'ctx> + Deref<Target = NonNull<Self::Pointed>> {
+    type Pointed;
+
+    unsafe fn wrap(ctx: &'ctx Context, ptr: NonNull<Self::Pointed>) -> Self
+    where
+        Self: Sized
+    ;
+
+    unsafe fn wrap_check_error(ctx: &'ctx Context, ptr: *mut Self::Pointed) -> Self
+    where
+        Self: Sized
+    {
+        let p = ctx.check_error_ptr(ptr).unwrap();
+        unsafe { Self::wrap(ctx, p) }
+    }
+}
+
 pub use ast::IsNotApp;
 pub use ast_vector::AstVector;
 pub use model::Model;
 pub use optimize::Optimize;
 pub use symbol::Symbol;
 pub use solver::Solver;
-
-/// Stores the interpretation of a function in a Z3 model.
-/// <https://z3prover.github.io/api/html/classz3py_1_1_func_interp.html>
-pub struct FuncInterp<'ctx> {
-    ctx: &'ctx Context,
-    z3_func_interp: NonNull<Z3_func_interp>,
-}
-
-/// Store the value of the interpretation of a function in a particular point.
-/// <https://z3prover.github.io/api/html/classz3py_1_1_func_entry.html>
-pub struct FuncEntry<'ctx> {
-    ctx: &'ctx Context,
-    z3_func_entry: NonNull<Z3_func_entry>,
-}
+pub use func_interp::FuncInterp;
 
 pub use z3_sys::DeclKind;
 
@@ -251,10 +251,10 @@ pub trait HasContext<'ctx> {
         Err(Error{code, msg})
     }
 
-    fn check_error_str(&self, s: Z3_string) -> String {
-        self.check_error().unwrap();
+    fn check_error_str(&self, s: Z3_string) -> Result<String, Error> {
+        self.check_error()?;
         assert!(!s.is_null());
-        unsafe { CStr::from_ptr(s) }.to_str().unwrap().to_string()
+        Ok(unsafe { CStr::from_ptr(s) }.to_str().unwrap().to_string())
     }
 
     fn get_error_code(&self) -> ErrorCode {

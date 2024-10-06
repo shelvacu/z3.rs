@@ -4,7 +4,7 @@ use std::convert::TryInto;
 
 use z3_sys::*;
 
-use crate::{Context, HasContext, ast::Dynamic, ast::Bool, make_z3_object};
+use crate::{Context, WrappedZ3, HasContext, ast::Dynamic, ast::Bool, make_z3_object};
 
 make_z3_object! {
     pub struct AstVector<'ctx>
@@ -28,6 +28,11 @@ impl<'ctx> AstVector<'ctx> {
     pub fn get(&self, i: u32) -> Option<Dynamic<'ctx>> {
         if i >= self.len() { return None }
         Some(unsafe { self.get_unchecked(i) })
+    }
+    
+    pub fn push(&self, item: &Dynamic<'ctx>) {
+        unsafe { Z3_ast_vector_push(**self.ctx(), **self, **item) };
+        self.check_error().unwrap();
     }
 
     pub unsafe fn get_unchecked(&self, i: u32) -> Dynamic<'ctx> {
