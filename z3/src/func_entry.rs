@@ -3,8 +3,7 @@ use std::fmt;
 use z3_sys::*;
 
 use crate::{
-    ast::{Ast, Dynamic},
-    Context, HasContext, WrappedZ3,
+    ast::Dynamic, HasContext, WrappedZ3,
     make_z3_object,
 };
 

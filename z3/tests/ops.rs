@@ -1,13 +1,12 @@
 use z3::{
     ast,
-    ast::{Array, Ast, AstKind, Bool, Dynamic, Float, Int, Real, BV},
-    Config, Context, DeclKind, FuncDecl, SatResult, Solver, Sort,
+    ast::{Array, Ast, AstKind, FuncDecl, Sort, Bool, Dynamic, Float, Int, Real, BV},
+    Context, DeclKind, SatResult, Solver,
 };
 
 #[test]
 fn test_bv_ops() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     macro_rules! test_binary_op {
         ($op:tt) => {
@@ -46,8 +45,7 @@ fn test_bv_ops() {
 
 #[test]
 fn test_int_ops() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     macro_rules! test_binary_op {
         ($op:tt) => {
@@ -83,8 +81,7 @@ fn test_int_ops() {
 
 #[test]
 fn test_pow_ret_real() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = Int::new_const(&ctx, "x");
     let y = x.power(&x);
     assert!(y.get_sort() == Sort::real(&ctx));
@@ -92,8 +89,7 @@ fn test_pow_ret_real() {
 
 #[test]
 fn test_real_ops() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     macro_rules! test_binary_op {
         ($op:tt) => {
@@ -126,8 +122,7 @@ fn test_real_ops() {
 
 #[test]
 fn test_float32_ops() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     macro_rules! test_unary_op {
         ($op:tt) => {
@@ -140,8 +135,7 @@ fn test_float32_ops() {
 
 #[test]
 fn test_double_ops() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     macro_rules! test_unary_op {
         ($op:tt) => {
@@ -154,8 +148,7 @@ fn test_double_ops() {
 
 #[test]
 fn test_bool_ops() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     macro_rules! test_binary_op {
         ($op:tt) => {
@@ -193,8 +186,7 @@ fn assert_bool_child<'c>(node: &impl Ast<'c>, idx: usize, expected: &Bool<'c>) {
 
 #[test]
 fn test_ast_children() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let a = Bool::new_const(&ctx, "a");
     assert_eq!(a.num_children(), 0);
@@ -239,8 +231,7 @@ fn assert_ast_attributes<'c, T: Ast<'c>>(expr: &T, is_const: bool) {
 
 #[test]
 fn test_ast_attributes() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let a = Bool::new_const(&ctx, "a");
     let b = Bool::from_bool(&ctx, false);
@@ -273,8 +264,7 @@ fn test_ast_attributes() {
 
 #[test]
 fn test_func_decl_attributes() {
-    let cfg = Config::default();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let const_decl = FuncDecl::new(&ctx, "c", &[], &Sort::bool(&ctx));
     assert_eq!(const_decl.kind(), DeclKind::UNINTERPRETED);
@@ -299,7 +289,7 @@ fn test_func_decl_attributes() {
 
 #[test]
 fn test_real_approx() {
-    let ctx = Context::new(&Config::default());
+    let ctx = Context::default();
     let x = Real::new_const(&ctx, "x");
     let xx = &x * &x;
     let zero = Real::from_real(&ctx, 0, 1);

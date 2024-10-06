@@ -1,4 +1,4 @@
-use z3::ast::Ast;
+use z3::ast;
 use z3::*;
 
 #[test]
@@ -12,11 +12,11 @@ fn test_optimize_assert_soft_and_get_objectives() {
     const COUNT: u64 = 10;
 
     let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::new(cfg);
     let opt = Optimize::new(&ctx);
 
-    let int = Sort::int(&ctx);
-    let well_ordered_fn = FuncDecl::new(&ctx, "well_ordered_fn", &[&int], &int);
+    let int = ast::Sort::int(&ctx);
+    let well_ordered_fn = ast::FuncDecl::new(&ctx, "well_ordered_fn", &[&int], &int);
 
     // i < j in the order
     for i in 0..COUNT {

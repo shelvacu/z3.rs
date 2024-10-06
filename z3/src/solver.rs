@@ -1,6 +1,6 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::convert::TryInto;
-use std::ops::{AddAssign, Deref};
+use std::ops::AddAssign;
 use std::ptr::NonNull;
 
 use log::debug;
@@ -8,7 +8,7 @@ use log::debug;
 use z3_sys::*;
 
 use crate::{Context, HasContext, WrappedZ3, Model, Params, SatResult, Statistics, Symbol, AstVector, make_z3_object};
-use crate::ast::{self, Ast};
+use crate::ast::{self};
 
 make_z3_object! {
     /// (Incremental) solver, possibly specialized by a particular tactic or logic.

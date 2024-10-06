@@ -1,9 +1,6 @@
 use std::convert::TryFrom;
-use std::ffi::{CStr, CString};
-use std::fmt;
+use std::ffi::CString;
 use std::os::raw::c_uint;
-use std::result::Result;
-use std::str::Utf8Error;
 use std::time::Duration;
 
 use z3_sys::*;

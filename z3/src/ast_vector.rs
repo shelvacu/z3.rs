@@ -1,10 +1,9 @@
-use std::ops::Index;
 use std::iter::Iterator;
 use std::convert::TryInto;
 
 use z3_sys::*;
 
-use crate::{Context, WrappedZ3, HasContext, ast::Dynamic, ast::Bool, make_z3_object};
+use crate::{Context, WrappedZ3, HasContext, ast::Dynamic, make_z3_object};
 
 make_z3_object! {
     pub struct AstVector<'ctx>

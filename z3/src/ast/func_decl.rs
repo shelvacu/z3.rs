@@ -4,7 +4,7 @@ use z3_sys::*;
 
 use crate::{Context, HasContext, WrappedZ3, Symbol};
 use crate::ast::{Ast, Sort, Dynamic};
-use super::{make_ast_object, impl_from_try_into_dynamic, unop, binop, trinop, varop};
+use super::{make_ast_object, impl_from_try_into_dynamic, unop};
 
 make_ast_object! {
     /// Function declaration. Every constant and function have an associated declaration.
