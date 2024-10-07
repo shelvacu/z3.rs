@@ -47,6 +47,17 @@ impl<'ctx> FuncEntry<'ctx> {
     }
 }
 
+impl<'ctx> fmt::Display for FuncEntry<'ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "[")?;
+        self.get_args()
+            .into_iter()
+            .try_for_each(|a| write!(f, "{a}, "))?;
+        write!(f, "{}", self.get_value())?;
+        write!(f, "]")
+    }
+}
+
 impl<'ctx> fmt::Debug for FuncEntry<'ctx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "[")?;

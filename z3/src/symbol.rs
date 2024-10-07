@@ -1,5 +1,6 @@
 use std::ffi::CString;
 use std::ptr::NonNull;
+use std::fmt;
 
 use z3_sys::*;
 
@@ -38,6 +39,15 @@ impl Symbol {
                 let i = ctx.check_error_pass(Z3_get_symbol_int(**ctx, zptr)).unwrap();
                 Symbol::Int(i)
             }
+        }
+    }
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Symbol::Int(i) => write!(f, "f!{i}"),
+            Symbol::String(s) => write!(f, "{s}"),
         }
     }
 }

@@ -82,24 +82,23 @@ impl<'ctx> Sort<'ctx> {
     ///
     /// # Examples
     /// ```
-    /// # use z3::{Config, Context, SatResult, Solver, Sort, Symbol};
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # use z3::{*, ast::*};
+    /// # let ctx = Context::default();
     /// # let solver = Solver::new(&ctx);
     /// let (colors, color_consts, color_testers) = Sort::enumeration(
     ///     &ctx,
-    ///     "Color".into(),
-    ///     &[
-    ///         "Red".into(),
-    ///         "Green".into(),
-    ///         "Blue".into(),
+    ///     "Color",
+    ///     [
+    ///         "Red",
+    ///         "Green",
+    ///         "Blue",
     ///     ],
     /// );
     ///
-    /// let red_const = color_consts[0].apply(&[]);
+    /// let red_const = color_consts[0].apply_empty();
     /// let red_tester = &color_testers[0];
     /// let eq = red_tester.apply(&[&red_const]);
-    /// solver.assert(eq);
+    /// solver.assert(&eq.as_bool().unwrap());
     ///
     /// assert_eq!(solver.check(), SatResult::Sat);
     /// let model = solver.get_model().unwrap();;
@@ -113,11 +112,8 @@ impl<'ctx> Sort<'ctx> {
     ) -> (Sort<'ctx>, [FuncDecl<'ctx>; N], [FuncDecl<'ctx>; N]) {
         use std::mem::MaybeUninit;
         let name = name.into().as_z3_symbol(ctx);
-        // let enum_names: Vec<_> = enum_names.into_iter().map(|s| NonNull::new(s.into().as_z3_symbol(ctx)).unwrap()).collect();
         let enum_names = enum_names.map(|s| s.into().as_z3_symbol(ctx));
         let mut consts_testers:[MaybeUninit<[NonNull<Z3_ast>; N]>; 2] = [MaybeUninit::uninit(); 2];
-        // let mut  enum_consts:Vec<MaybeUninit<*mut Z3_ast>> = vec![MaybeUninit::uninit(); enum_count];
-        // let mut enum_testers:Vec<MaybeUninit<*mut Z3_ast>> = vec![MaybeUninit::uninit(); enum_count];
 
         let sort = unsafe {
             Self::wrap_check_error(
@@ -165,9 +161,8 @@ impl<'ctx> Sort<'ctx> {
     ///
     /// # Examples
     /// ```
-    /// # use z3::{Config, Context, Sort, ast::Ast, ast::Int, ast::Bool};
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # use z3::{Config, Context, ast::Sort, ast::Ast, ast::Int, ast::Bool};
+    /// # let ctx = Context::default();
     /// let bool_sort = Sort::bool(&ctx);
     /// let int_sort = Sort::int(&ctx);
     /// let array_sort = Sort::array(&ctx, &int_sort, &bool_sort);
@@ -187,9 +182,8 @@ impl<'ctx> Sort<'ctx> {
     /// If this is not an `Array` or `Set` `Sort`, return `None`.
     /// # Examples
     /// ```
-    /// # use z3::{Config, Context, Sort, ast::Ast, ast::Int, ast::Bool};
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # use z3::{*, ast::*};
+    /// # let ctx = Context::default();
     /// let bool_sort = Sort::bool(&ctx);
     /// let int_sort = Sort::int(&ctx);
     /// let array_sort = Sort::array(&ctx, &int_sort, &bool_sort);
@@ -215,9 +209,8 @@ impl<'ctx> Sort<'ctx> {
     /// If this is not an `Array` or `Set` `Sort`, return `None`.
     /// # Examples
     /// ```
-    /// # use z3::{Config, Context, Sort, ast::Ast, ast::Int, ast::Bool};
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # use z3::{*, ast::*};
+    /// # let ctx = Context::default();
     /// let bool_sort = Sort::bool(&ctx);
     /// let int_sort = Sort::int(&ctx);
     /// let array_sort = Sort::array(&ctx, &int_sort, &bool_sort);
@@ -238,7 +231,7 @@ impl<'ctx> Sort<'ctx> {
 }
 
 /// A struct to represent when two sorts are of different types.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SortDiffers<'ctx> {
     pub left: Sort<'ctx>,
     pub right: Sort<'ctx>,

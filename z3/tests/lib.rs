@@ -24,14 +24,13 @@ fn test_context() {
     let _ = env_logger::try_init();
     let mut cfg = Config::new();
     cfg.set_proof_generation(true);
-    let _ = Context::new(&cfg);
+    let _ = Context::new(cfg);
 }
 
 #[test]
 fn test_sorts_and_symbols() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let _ = ast::Int::new_const(&ctx, "x");
     let _ = ast::Int::new_const(&ctx, "y");
 }
@@ -39,8 +38,7 @@ fn test_sorts_and_symbols() {
 #[test]
 fn test_solving() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = ast::Int::new_const(&ctx, "x");
     let y = ast::Int::new_const(&ctx, "y");
 
@@ -52,8 +50,7 @@ fn test_solving() {
 #[test]
 fn test_solving_for_model() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = ast::Int::new_const(&ctx, "x");
     let y = ast::Int::new_const(&ctx, "y");
     let zero = ast::Int::from_i64(&ctx, 0);
@@ -81,8 +78,7 @@ fn test_solving_for_model() {
 #[test]
 fn test_solving_for_model_cloned() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = ast::Int::new_const(&ctx, "x");
     let y = ast::Int::new_const(&ctx, "y");
     let zero = ast::Int::from_i64(&ctx, 0);
@@ -111,8 +107,7 @@ fn test_solving_for_model_cloned() {
 #[test]
 fn test_cloning_ast() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = ast::Int::new_const(&ctx, "x");
     let y = x.clone();
     let zero = ast::Int::from_i64(&ctx, 0);
@@ -142,16 +137,14 @@ fn test_solver_get_assertions_lifetime() {
     // using the solver have the lifetime of the context rather
     // than the solver.
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let assertions = get_some_solver_assertions(&ctx);
     assert_eq!(assertions.len(), 1);
 }
 
 #[test]
 fn test_format() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let ast = ast::Int::new_const(&ctx, "x");
     assert_eq!("x", format!("{ast}"));
 
@@ -161,8 +154,7 @@ fn test_format() {
 
 #[test]
 fn test_bitvectors() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let a = ast::BV::new_const(&ctx, "a", 64);
     let b = ast::BV::new_const(&ctx, "b", 64);
     let two = ast::BV::from_i64(&ctx, 2, 64);
@@ -184,8 +176,7 @@ fn test_bitvectors() {
 
 #[test]
 fn test_bitvector_from_str() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let a = ast::BV::new_const(&ctx, "a", 129);
     // 2 ** 128
@@ -202,22 +193,21 @@ fn test_bitvector_from_str() {
 
 #[test]
 fn test_floating_point_bits() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let float32 = ast::Float::new_const_float32(&ctx, "float32");
     let float64 = ast::Float::new_const_double(&ctx, "float64");
     let float128 = ast::Float::new_const(&ctx, "float128", 15, 113);
     let i = ast::Int::new_const(&ctx, "int");
 
-    let exp32 = Sort::float_exponent_size(&float32.get_sort());
-    let sig32 = Sort::float_significand_size(&float32.get_sort());
-    let exp64 = Sort::float_exponent_size(&float64.get_sort());
-    let sig64 = Sort::float_significand_size(&float64.get_sort());
-    let exp128 = Sort::float_exponent_size(&float128.get_sort());
-    let sig128 = Sort::float_significand_size(&float128.get_sort());
-    let expi = Sort::float_exponent_size(&i.get_sort());
-    let sigi = Sort::float_significand_size(&i.get_sort());
+    let exp32 = Sort::float_exponent_size(&float32.sort());
+    let sig32 = Sort::float_significand_size(&float32.sort());
+    let exp64 = Sort::float_exponent_size(&float64.sort());
+    let sig64 = Sort::float_significand_size(&float64.sort());
+    let exp128 = Sort::float_exponent_size(&float128.sort());
+    let sig128 = Sort::float_significand_size(&float128.sort());
+    let expi = Sort::float_exponent_size(&i.sort());
+    let sigi = Sort::float_significand_size(&i.sort());
 
     assert!(exp32 == Some(8));
     assert!(sig32 == Some(24));
@@ -232,10 +222,10 @@ fn test_floating_point_bits() {
 #[test]
 fn test_ast_translate() {
     let cfg = Config::new();
-    let source = Context::new(&cfg);
+    let source = Context::new(cfg.clone());
     let a = ast::Int::new_const(&source, "a");
 
-    let destination = Context::new(&cfg);
+    let destination = Context::new(cfg.clone());
     let translated_a = a.translate(&destination);
 
     let slv = Solver::new(&destination);
@@ -248,8 +238,7 @@ fn test_ast_translate() {
 
 #[test]
 fn test_solver_new_from_smtlib2() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let problem = r#"
 (declare-const x Real)
 (declare-const y Real)
@@ -264,13 +253,12 @@ fn test_solver_new_from_smtlib2() {
 
 #[test]
 fn test_solver_to_smtlib2() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver1 = Solver::new(&ctx);
     let t1 = ast::Bool::from_bool(&ctx, true);
     let t2 = ast::Bool::from_bool(&ctx, true);
     solver1.assert(&t1._eq(&t2));
-    let s1_smt2 = solver1.to_smt2();
+    let s1_smt2 = solver1.to_string();
     let solver2 = Solver::new(&ctx);
     solver2.from_string(s1_smt2);
     assert_eq!(solver2.check(), solver1.check());
@@ -279,10 +267,10 @@ fn test_solver_to_smtlib2() {
 #[test]
 fn test_solver_translate() {
     let cfg = Config::new();
-    let source = Context::new(&cfg);
+    let source = Context::new(cfg.clone());
     let a = ast::Int::new_const(&source, "a");
 
-    let destination = Context::new(&cfg);
+    let destination = Context::new(cfg.clone());
     let translated_a = a.translate(&destination);
 
     let slv = Solver::new(&destination);
@@ -299,10 +287,10 @@ fn test_solver_translate() {
 #[test]
 fn test_model_translate() {
     let cfg = Config::new();
-    let source = Context::new(&cfg);
+    let source = Context::new(cfg.clone());
     let a = ast::Int::new_const(&source, "a");
 
-    let destination = Context::new(&cfg);
+    let destination = Context::new(cfg.clone());
     let translated_a = a.translate(&destination);
 
     let slv = Solver::new(&source);
@@ -324,8 +312,7 @@ fn test_model_translate() {
 
 #[test]
 fn test_pb_ops_model() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = ast::Bool::new_const(&ctx, "x");
     let y = ast::Bool::new_const(&ctx, "y");
     let solver = Solver::new(&ctx);
@@ -364,8 +351,7 @@ fn test_pb_ops_model() {
 
 #[test]
 fn function_ref_count() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let int_sort = Sort::int(&ctx);
@@ -379,8 +365,7 @@ fn function_ref_count() {
 #[test]
 fn test_params() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let x = ast::Int::new_const(&ctx, "x");
     let y = ast::Int::new_const(&ctx, "y");
 
@@ -414,8 +399,7 @@ fn test_global_params() {
 
 #[test]
 fn test_substitution() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let x = ast::Real::new_const(&ctx, "x");
     let y = ast::Real::new_const(&ctx, "y");
@@ -431,8 +415,7 @@ fn test_substitution() {
 
 #[test]
 fn test_real_cmp() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let x = ast::Real::new_const(&ctx, "x");
@@ -446,8 +429,7 @@ fn test_real_cmp() {
 
 #[test]
 fn test_float() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let f = ast::Float::from_f64(&ctx, 1.0);
     assert_eq!(f.as_f64(), 1.0);
@@ -455,8 +437,7 @@ fn test_float() {
 
 #[test]
 fn test_float_add() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let x = ast::Float::new_const_float32(&ctx, "x");
@@ -469,8 +450,7 @@ fn test_float_add() {
 
 #[test]
 fn test_arbitrary_size_real() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let x = ast::Real::from_real_str(&ctx, "99999999999999999999998", "99999999999999999999999")
@@ -483,8 +463,7 @@ fn test_arbitrary_size_real() {
 
 #[test]
 fn test_arbitrary_size_int() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let x = ast::Int::from_str(&ctx, "99999999999999999999998").unwrap();
@@ -497,8 +476,7 @@ fn test_arbitrary_size_int() {
 
 #[test]
 fn test_arbitrary_size_real_from_bigrational() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let x = ast::Real::from_real_str(&ctx, "99999999999999999999998", "99999999999999999999999")
@@ -514,8 +492,7 @@ fn test_arbitrary_size_real_from_bigrational() {
 
 #[test]
 fn test_arbitrary_size_int_from_bigint() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let num1 = BigInt::from_str("99999999999999999999998").unwrap();
@@ -531,14 +508,13 @@ fn test_arbitrary_size_int_from_bigint() {
 
 #[test]
 fn test_string_eq() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
-    let x = ast::String::from_str(&ctx, "foo").unwrap();
-    let y = ast::String::from_str(&ctx, "foo").unwrap();
-    let z = ast::String::from_str(&ctx, "bar").unwrap();
-    let h = ast::String::new_const(&ctx, "h");
+    let x = ast::AstString::from_str(&ctx, "foo").unwrap();
+    let y = ast::AstString::from_str(&ctx, "foo").unwrap();
+    let z = ast::AstString::from_str(&ctx, "bar").unwrap();
+    let h = ast::AstString::new_const(&ctx, "h");
 
     solver.assert(&x._eq(&y));
     solver.assert(&x._eq(&z).not());
@@ -551,26 +527,24 @@ fn test_string_eq() {
 
 #[test]
 fn test_string_concat() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
-    let x = ast::String::from_str(&ctx, "foo").unwrap();
-    let y = ast::String::from_str(&ctx, "bar").unwrap();
-    let z = ast::String::from_str(&ctx, "foobar").unwrap();
+    let x = ast::AstString::from_str(&ctx, "foo").unwrap();
+    let y = ast::AstString::from_str(&ctx, "bar").unwrap();
+    let z = ast::AstString::from_str(&ctx, "foobar").unwrap();
 
-    solver.assert(&ast::String::concat(&ctx, &[&x, &y])._eq(&z));
+    solver.assert(&ast::AstString::concat(&ctx, &[&x, &y])._eq(&z));
     assert_eq!(solver.check(), SatResult::Sat);
 }
 
 #[test]
 fn test_string_prefix() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
-    let x = ast::String::from_str(&ctx, "foo").unwrap();
-    let y = ast::String::from_str(&ctx, "foobar").unwrap();
+    let x = ast::AstString::from_str(&ctx, "foo").unwrap();
+    let y = ast::AstString::from_str(&ctx, "foobar").unwrap();
 
     solver.assert(&x.prefix(&y));
     assert_eq!(solver.check(), SatResult::Sat);
@@ -578,21 +552,19 @@ fn test_string_prefix() {
 
 #[test]
 fn test_string_suffix() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
-    let x = ast::String::from_str(&ctx, "bar").unwrap();
-    let y = ast::String::from_str(&ctx, "foobar").unwrap();
+    let x = ast::AstString::from_str(&ctx, "bar").unwrap();
+    let y = ast::AstString::from_str(&ctx, "foobar").unwrap();
 
     solver.assert(&x.suffix(&y));
     assert_eq!(solver.check(), SatResult::Sat);
 }
 
 fn assert_string_roundtrip(source: &str) {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
-    let expr = ast::String::from_str(&ctx, source).unwrap();
+    let ctx = Context::default();
+    let expr = ast::AstString::from_str(&ctx, source).unwrap();
     assert_eq!(&expr.as_string().unwrap(), source);
 }
 
@@ -609,7 +581,7 @@ fn test_rec_func_def() {
     let _ = env_logger::try_init();
     let cfg = Config::new();
 
-    let ctx = Context::new(&cfg);
+    let ctx = Context::new(cfg);
 
     let fac = RecFuncDecl::new(&ctx, "fac", &[&Sort::int(&ctx)], &Sort::int(&ctx));
     let n = ast::Int::new_const(&ctx, "n");
@@ -641,7 +613,7 @@ fn test_rec_func_def_unsat() {
     let _ = env_logger::try_init();
     let cfg = Config::new();
 
-    let ctx = Context::new(&cfg);
+    let ctx = Context::new(cfg);
 
     let fac = RecFuncDecl::new(&ctx, "fac", &[&Sort::int(&ctx)], &Sort::int(&ctx));
     let n = ast::Int::new_const(&ctx, "n");
@@ -677,7 +649,7 @@ fn test_solver_unknown() {
     let mut cfg = Config::new();
     // Use a very short timeout to quickly return "unknown"
     cfg.set_timeout_msec(1);
-    let ctx = Context::new(&cfg);
+    let ctx = Context::new(cfg);
 
     // An open problem: find a model for x^3 + y^3 + z^3 == 42
     // See: https://en.wikipedia.org/wiki/Sums_of_three_cubes
@@ -703,7 +675,7 @@ fn test_optimize_unknown() {
     let mut cfg = Config::new();
     // Use a very short timeout to quickly return "unknown"
     cfg.set_timeout_msec(1);
-    let ctx = Context::new(&cfg);
+    let ctx = Context::new(cfg);
 
     // An open problem: find a model for x^3 + y^3 + z^3 == 42
     // See: https://en.wikipedia.org/wiki/Sums_of_three_cubes
@@ -726,8 +698,7 @@ fn test_optimize_unknown() {
 #[test]
 fn test_optimize_new_from_smtlib2() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let problem = r#"
 (declare-const x Real)
 (declare-const y Real)
@@ -744,8 +715,7 @@ fn test_optimize_new_from_smtlib2() {
 fn test_get_unsat_core() {
     let _ = env_logger::try_init();
 
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     assert!(
@@ -779,8 +749,7 @@ fn test_get_unsat_core() {
 fn test_optimize_get_unsat_core() {
     let _ = env_logger::try_init();
 
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let optimize = Optimize::new(&ctx);
 
     assert!(
@@ -813,7 +782,7 @@ fn test_optimize_get_unsat_core() {
 
     let a = x._eq(&Int::from_i64(&ctx, 4));
     let b = x._eq(&Int::from_i64(&ctx, 6));
-    let result = optimize.check(&[a.clone(), b.clone()]);
+    let result = optimize.check(&[&a, &b]);
     assert_eq!(result, SatResult::Unsat);
 
     let unsat_core = optimize.get_unsat_core();
@@ -826,19 +795,18 @@ fn test_optimize_get_unsat_core() {
 fn test_datatype_builder() {
     let _ = env_logger::try_init();
 
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let maybe_int = DatatypeBuilder::new(&ctx, "MaybeInt")
-        .variant("Nothing", vec![])
+        .variant_empty("Nothing")
         .variant(
             "Just",
             vec![("int", DatatypeAccessor::Sort(Sort::int(&ctx)))],
         )
         .finish();
 
-    let nothing = maybe_int.variants[0].constructor.apply(&[]);
+    let nothing = maybe_int.variants[0].constructor.apply_empty();
     let five = ast::Int::from_i64(&ctx, 5);
     let just_five = maybe_int.variants[1].constructor.apply(&[&five]);
 
@@ -882,12 +850,11 @@ fn test_datatype_builder() {
 #[test]
 fn test_recursive_datatype() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let list_sort = DatatypeBuilder::new(&ctx, "List")
-        .variant("nil", vec![])
+        .variant_empty("nil")
         .variant(
             "cons",
             vec![
@@ -898,9 +865,9 @@ fn test_recursive_datatype() {
         .finish();
 
     assert_eq!(list_sort.variants.len(), 2);
-    let nil = list_sort.variants[0].constructor.apply(&[]);
+    let nil = list_sort.variants[0].constructor.apply_empty();
     let five = ast::Int::from_i64(&ctx, 5);
-    let cons_five_nil = list_sort.variants[1].constructor.apply(&[&five, &nil]);
+    let cons_five_nil = list_sort.variants[1].constructor.apply(&[&five.dynamic(), &nil.dynamic()]);
 
     let nil_is_nil = list_sort.variants[0]
         .tester
@@ -948,8 +915,7 @@ fn test_recursive_datatype() {
 #[test]
 fn test_mutually_recursive_datatype() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
 
     let tree_builder = DatatypeBuilder::new(&ctx, "Tree")
@@ -963,7 +929,7 @@ fn test_mutually_recursive_datatype() {
         );
 
     let tree_list_builder = DatatypeBuilder::new(&ctx, "TreeList")
-        .variant("nil", vec![])
+        .variant_empty("nil")
         .variant(
             "cons",
             vec![
@@ -972,7 +938,7 @@ fn test_mutually_recursive_datatype() {
             ],
         );
 
-    let sorts = z3::datatype_builder::create_datatypes(vec![tree_builder, tree_list_builder]);
+    let sorts = z3::datatype_builder::create_datatypes(vec![&tree_builder, &tree_list_builder]);
     assert_eq!(sorts.len(), 2);
     let tree_sort = &sorts[0];
     assert_eq!(tree_sort.variants.len(), 2);
@@ -993,7 +959,7 @@ fn test_mutually_recursive_datatype() {
     solver.assert(&leaf_ten_val_is_ten._eq(&ten.clone()));
     assert_eq!(solver.check(), SatResult::Sat);
 
-    let nil = tree_list_sort.variants[0].constructor.apply(&[]);
+    let nil = tree_list_sort.variants[0].constructor.apply_empty();
     let twenty = ast::Int::from_i64(&ctx, 20);
     let leaf_twenty = tree_sort.variants[0].constructor.apply(&[&twenty]);
     let cons_leaf_twenty_nil = tree_list_sort.variants[1]
@@ -1025,16 +991,14 @@ fn test_mutually_recursive_datatype() {
 
 #[test]
 fn get_model_without_check_does_not_exit() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
     solver.get_model();
 }
 
 #[test]
 fn check_application_of_tactic_to_goal() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let params = Params::new(&ctx);
 
     let tactic = Tactic::new(&ctx, "simplify");
@@ -1061,7 +1025,6 @@ fn check_application_of_tactic_to_goal() {
     );
     let apply_results = repeat_tactic.apply(&goal, Some(&params));
     let goal_results = apply_results
-        .unwrap()
         .list_subgoals()
         .collect::<Vec<Goal>>();
     let goal_result = goal_results.first().unwrap();
@@ -1071,8 +1034,7 @@ fn check_application_of_tactic_to_goal() {
 
 #[test]
 fn test_goal_depth() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let goal = Goal::new(&ctx, false, false, false);
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1084,8 +1046,7 @@ fn test_goal_depth() {
 
 #[test]
 fn test_goal_size() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let goal = Goal::new(&ctx, false, false, false);
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1097,8 +1058,7 @@ fn test_goal_size() {
 
 #[test]
 fn test_goal_num_expr() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let goal = Goal::new(&ctx, false, false, false);
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1115,8 +1075,7 @@ fn test_goal_num_expr() {
 
 #[test]
 fn test_goal_get_precision() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let false_bool = ast::Bool::from_bool(&ctx, false);
 
     let goal = Goal::new(&ctx, false, false, false);
@@ -1126,8 +1085,7 @@ fn test_goal_get_precision() {
 
 #[test]
 fn test_goal_is_inconsistent() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let false_bool = ast::Bool::from_bool(&ctx, false);
     let goal = Goal::new(&ctx, false, false, false);
@@ -1142,8 +1100,7 @@ fn test_goal_is_inconsistent() {
 
 #[test]
 fn test_goal_is_sat() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let false_bool = ast::Bool::from_bool(&ctx, false);
     let goal = Goal::new(&ctx, false, false, false);
@@ -1160,8 +1117,7 @@ fn test_goal_is_sat() {
 
 #[test]
 fn test_goal_reset() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let a = ast::Bool::new_const(&ctx, "a");
     let goal = Goal::new(&ctx, false, false, false);
@@ -1174,8 +1130,7 @@ fn test_goal_reset() {
 #[test]
 fn test_set_membership() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
     let set = ast::Set::new_const(&ctx, "integer_set", &Sort::int(&ctx));
     let one = ast::Int::from_u64(&ctx, 1);
@@ -1221,8 +1176,7 @@ fn test_set_membership() {
 #[test]
 fn test_dynamic_as_set() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let set_sort = Sort::set(&ctx, &Sort::int(&ctx));
     let array_sort = Sort::array(&ctx, &Sort::int(&ctx), &Sort::int(&ctx));
     let array_of_sets = ast::Array::new_const(&ctx, "array_of_sets", &Sort::int(&ctx), &set_sort);
@@ -1241,8 +1195,7 @@ fn test_dynamic_as_set() {
 #[test]
 fn test_array_store_select() {
     let _ = env_logger::try_init();
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
     let zero = ast::Int::from_u64(&ctx, 0);
     let one = ast::Int::from_u64(&ctx, 1);
@@ -1255,8 +1208,7 @@ fn test_array_store_select() {
 
 #[test]
 fn test_goal_get_formulas() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let goal = Goal::new(&ctx, false, false, false);
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1265,13 +1217,12 @@ fn test_goal_get_formulas() {
     goal.assert(&a);
     goal.assert(&b);
     goal.assert(&c);
-    assert_eq!(goal.get_formulas::<Bool>(), vec![a, b, c],);
+    assert_eq!(goal.get_formulas(), vec![a, b, c],);
 }
 
 #[test]
 fn test_tactic_skip() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let params = Params::new(&ctx);
 
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1284,17 +1235,16 @@ fn test_tactic_skip() {
     let tactic = Tactic::create_skip(&ctx);
     let apply_results = tactic.apply(&goal, Some(&params));
     let goal_results = apply_results
-        .unwrap()
         .list_subgoals()
         .collect::<Vec<Goal>>();
     let goal_result = goal_results.first().unwrap();
-    assert_eq!(goal_result.get_formulas::<Bool>(), vec![a.clone(), b, a],);
+    assert_eq!(goal_result.get_formulas(), vec![a.clone(), b, a],);
 }
 
 #[test]
+#[should_panic]
 fn test_tactic_fail() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let params = Params::new(&ctx);
 
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1302,14 +1252,12 @@ fn test_tactic_fail() {
     goal.assert(&a);
 
     let tactic = Tactic::new(&ctx, "fail");
-    let apply_results = tactic.apply(&goal, Some(&params));
-    assert!(apply_results.is_err());
+    tactic.apply(&goal, Some(&params));
 }
 
 #[test]
 fn test_tactic_try_for() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let params = Params::new(&ctx);
 
     let one = ast::Int::from_i64(&ctx, 1);
@@ -1325,7 +1273,6 @@ fn test_tactic_try_for() {
     // Test that `try_for` can successfully apply the underlying tactic
     let apply_results = try_for_tactic.apply(&goal, Some(&params));
     let goal_results = apply_results
-        .unwrap()
         .list_subgoals()
         .collect::<Vec<Goal>>();
     let goal_result = goal_results.first().unwrap();
@@ -1334,8 +1281,7 @@ fn test_tactic_try_for() {
 
 #[test]
 fn test_tactic_and_then() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let params = Params::new(&ctx);
 
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1349,17 +1295,15 @@ fn test_tactic_and_then() {
     let and_then_tactic = tactic.and_then(&Tactic::new(&ctx, "simplify"));
     let apply_results = and_then_tactic.apply(&goal, Some(&params));
     let goal_results = apply_results
-        .unwrap()
         .list_subgoals()
         .collect::<Vec<Goal>>();
     let goal_result = goal_results.first().unwrap();
-    assert_eq!(goal_result.get_formulas::<Bool>(), vec![a, b]);
+    assert_eq!(goal_result.get_formulas(), vec![a, b]);
 }
 
 #[test]
 fn test_tactic_or_else() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let params = Params::new(&ctx);
 
     let a = ast::Bool::new_const(&ctx, "a");
@@ -1374,17 +1318,15 @@ fn test_tactic_or_else() {
     let or_else_tactic = tactic.or_else(&simplify);
     let apply_results = or_else_tactic.apply(&goal, Some(&params));
     let goal_results = apply_results
-        .unwrap()
         .list_subgoals()
         .collect::<Vec<Goal>>();
     let goal_result = goal_results.first().unwrap();
-    assert_eq!(goal_result.get_formulas::<Bool>(), vec![a, b]);
+    assert_eq!(goal_result.get_formulas(), vec![a, b]);
 }
 
 #[test]
 fn test_goal_apply_tactic() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     pub fn test_apply_tactic(
         ctx: &Context,
@@ -1392,19 +1334,18 @@ fn test_goal_apply_tactic() {
         before_formulas: Vec<Bool>,
         after_formulas: Vec<Bool>,
     ) {
-        assert_eq!(goal.get_formulas::<Bool>(), before_formulas);
+        assert_eq!(goal.get_formulas(), before_formulas);
         let params = Params::new(ctx);
 
         let tactic = Tactic::new(ctx, "sat-preprocess");
         let repeat_tactic = Tactic::repeat(ctx, &tactic, 100);
         let apply_results = repeat_tactic.apply(&goal, Some(&params));
         let goal_results = apply_results
-            .unwrap()
             .list_subgoals()
             .collect::<Vec<Goal>>();
         let goal_result = goal_results.first().unwrap();
         assert_eq!(
-            goal_result.get_formulas::<Bool>(),
+            goal_result.get_formulas(),
             after_formulas,
             "Before: {before_formulas:?}"
         );
@@ -1461,8 +1402,7 @@ fn test_goal_apply_tactic() {
 
 #[test]
 fn test_tactic_cond() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let t1 = Tactic::new(&ctx, "qfnra");
     let t2 = Tactic::new(&ctx, "smt");
     let p = Probe::new(&ctx, "is-qfnra");
@@ -1472,8 +1412,7 @@ fn test_tactic_cond() {
 
 #[test]
 fn test_tactic_conditions() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let t1 = Tactic::new(&ctx, "qfnra");
     let t2 = Tactic::new(&ctx, "smt");
     let p = Probe::new(&ctx, "is-qfnra");
@@ -1486,19 +1425,17 @@ fn test_tactic_conditions() {
 
 #[test]
 fn test_probe_debug() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
-    let _v: Vec<&str> = Probe::list_all(&ctx).map(|x| x.unwrap()).collect();
+    let ctx = Context::default();
+    let _v: Vec<String> = Probe::list_all(&ctx).collect();
     assert_eq!(
         "A probe to give an upper bound of Ackermann congruence lemmas that a formula might generate.",
-        Probe::describe(&ctx, "ackr-bound-probe").unwrap(),
+        Probe::describe(&ctx, "ackr-bound-probe"),
     );
 }
 
 #[test]
 fn test_probe_names() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let x = ast::Int::fresh_const(&ctx, "x");
     let zero = ast::Int::from_u64(&ctx, 0);
@@ -1522,8 +1459,7 @@ fn test_probe_names() {
 
 #[test]
 fn test_probe_eq() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
 
     let zero = ast::Int::from_u64(&ctx, 0);
     let ten = ast::Int::from_u64(&ctx, 10);
@@ -1541,8 +1477,7 @@ fn test_probe_eq() {
 
 #[test]
 fn test_probe_gt() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let ten_probe = Probe::constant(&ctx, 10.0);
     let size_probe = Probe::new(&ctx, "size");
     let gt_ten_probe = &size_probe.gt(&ten_probe);
@@ -1558,8 +1493,7 @@ fn test_probe_gt() {
 
 #[test]
 fn test_probe_gte() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let two_probe = Probe::constant(&ctx, 2.0);
     let size_probe = Probe::new(&ctx, "size");
     let ge_two_probe = &size_probe.ge(&two_probe);
@@ -1575,8 +1509,7 @@ fn test_probe_gte() {
 
 #[test]
 fn test_probe_le() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let two_probe = Probe::constant(&ctx, 2.0);
     let size_probe = Probe::new(&ctx, "size");
     let le_two_probe = &size_probe.le(&two_probe);
@@ -1592,8 +1525,7 @@ fn test_probe_le() {
 
 #[test]
 fn test_probe_lt() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let ten_probe = Probe::constant(&ctx, 10.0);
     let size_probe = Probe::new(&ctx, "size");
     let le_ten_probe = &size_probe.le(&ten_probe);
@@ -1609,8 +1541,7 @@ fn test_probe_lt() {
 
 #[test]
 fn test_probe_ne() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let two_probe = Probe::constant(&ctx, 2.0);
     let size_probe = Probe::new(&ctx, "size");
     let ne_two_probe = &size_probe.ne(&two_probe);
@@ -1628,8 +1559,8 @@ fn test_probe_ne() {
 #[should_panic]
 fn test_issue_94() {
     let cfg = Config::new();
-    let ctx0 = Context::new(&cfg);
-    let ctx1 = Context::new(&cfg);
+    let ctx0 = Context::new(cfg.clone());
+    let ctx1 = Context::new(cfg.clone());
     let i0 = ast::Int::fresh_const(&ctx0, "a");
     let i1 = ast::Int::fresh_const(&ctx1, "b");
     ast::Int::add(&ctx0, &[&i0, &i1]);
@@ -1638,29 +1569,28 @@ fn test_issue_94() {
 #[test]
 fn test_ast_safe_eq() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let x: ast::Dynamic = ast::Bool::new_const(ctx, "a").into();
-    let y: ast::Dynamic = ast::String::from_str(ctx, "b").unwrap().into();
+    let y: ast::Dynamic = ast::AstString::from_str(ctx, "b").unwrap().into();
 
     let other_bool: ast::Dynamic = ast::Bool::new_const(ctx, "c").into();
-    let other_string: ast::Dynamic = ast::String::from_str(ctx, "d").unwrap().into();
+    let other_string: ast::Dynamic = ast::AstString::from_str(ctx, "d").unwrap().into();
 
-    let sd: SortDiffers<'_> = SortDiffers::new(other_bool.get_sort(), other_string.get_sort());
+    let sd = SortDiffers { left: other_bool.sort(), right: other_string.sort(), };
 
     let result = x._safe_eq(&y);
     assert!(result.is_err());
     let err = result.err().unwrap();
-    assert_eq!(err.left(), sd.left());
-    assert_eq!(err.right(), sd.right());
+    assert_eq!(err, sd);
 }
 
 #[test]
 fn test_ast_safe_decl() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let x: ast::Bool = ast::Bool::new_const(ctx, "x");
     let x_not = x.not();
-    assert_eq!(x_not.safe_decl().unwrap().kind(), DeclKind::NOT);
+    assert_eq!(x_not.safe_decl().unwrap().decl_kind(), DeclKind::NOT);
 
     let f = FuncDecl::new(ctx, "f", &[&Sort::int(ctx)], &Sort::int(ctx));
     let x = ast::Int::new_const(ctx, "x");
@@ -1678,9 +1608,9 @@ fn test_ast_safe_decl() {
 #[test]
 fn test_regex_capital_foobar_intersect_az_plus_is_unsat() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let solver = Solver::new(ctx);
-    let s = ast::String::new_const(ctx, "s");
+    let s = ast::AstString::new_const(ctx, "s");
 
     let re = ast::Regexp::intersect(
         ctx,
@@ -1692,7 +1622,7 @@ fn test_regex_capital_foobar_intersect_az_plus_is_unsat() {
                     &ast::Regexp::literal(ctx, "bar"),
                 ],
             ),
-            &ast::Regexp::plus(&ast::Regexp::range(ctx, &'a', &'z')),
+            &ast::Regexp::plus(&ast::Regexp::range(ctx, 'a', 'z')),
         ],
     );
     solver.assert(&s.regex_matches(&re));
@@ -1702,16 +1632,16 @@ fn test_regex_capital_foobar_intersect_az_plus_is_unsat() {
 #[test]
 fn test_regex_union() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let solver = Solver::new(ctx);
-    let a = ast::String::from_str(ctx, "a").unwrap();
-    let b = ast::String::from_str(ctx, "b").unwrap();
-    let c = ast::String::from_str(ctx, "c").unwrap();
+    let a = ast::AstString::from_str(ctx, "a").unwrap();
+    let b = ast::AstString::from_str(ctx, "b").unwrap();
+    let c = ast::AstString::from_str(ctx, "c").unwrap();
     let re = ast::Regexp::union(
         ctx,
         &[
-            ast::Regexp::literal(ctx, "a"),
-            ast::Regexp::literal(ctx, "b"),
+            &ast::Regexp::literal(ctx, "a"),
+            &ast::Regexp::literal(ctx, "b"),
         ],
     );
     solver.assert(&a.regex_matches(&re));
@@ -1723,14 +1653,14 @@ fn test_regex_union() {
 #[test]
 fn test_regex_union2() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let solver = Solver::new(ctx);
-    let c = ast::String::from_str(ctx, "c").unwrap();
+    let c = ast::AstString::from_str(ctx, "c").unwrap();
     let re = ast::Regexp::union(
         ctx,
         &[
-            ast::Regexp::literal(ctx, "a"),
-            ast::Regexp::literal(ctx, "b"),
+            &ast::Regexp::literal(ctx, "a"),
+            &ast::Regexp::literal(ctx, "b"),
         ],
     );
     solver.assert(&c.regex_matches(&re));
@@ -1741,7 +1671,7 @@ fn test_regex_union2() {
 /// <https://github.com/Z3Prover/z3/blob/21e59f7c6e5033006265fc6bc16e2c9f023db0e8/examples/dotnet/Program.cs#L329-L370>
 fn test_array_example1() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
 
     let g = Goal::new(ctx, true, false, false);
 
@@ -1755,7 +1685,7 @@ fn test_array_example1() {
 
     let fd = FuncDecl::new(ctx, "f", &[&Sort::int(ctx)], &Sort::int(ctx));
 
-    let fapp = fd.apply(&[&xc as &dyn Ast]);
+    let fapp = fd.apply(&[&xc]);
 
     g.assert(&Int::from_u64(ctx, 123)._eq(&xc.clone().add(&fapp.as_int().unwrap())));
 
@@ -1793,7 +1723,7 @@ fn test_array_example1() {
 /// <https://z3prover.github.io/api/html/classz3py_1_1_func_entry.html>
 fn return_number_args_in_given_entry() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let f = FuncDecl::new(
         ctx,
         "f",
@@ -1821,6 +1751,7 @@ fn return_number_args_in_given_entry() {
     let f_i = model.get_func_interp(&f).unwrap();
     assert!(f_i.get_num_entries() == 1);
     let e = &f_i.get_entries()[0];
+    dbg!(e);
     assert!(e.to_string() == "[1, 2, 20]");
     assert!(e.get_num_args() == 2);
     assert!(e.get_args()[0].to_string() == "1");
@@ -1834,7 +1765,7 @@ fn return_number_args_in_given_entry() {
 /// <https://stackoverflow.com/questions/13395391/z3-finding-all-satisfying-models>
 fn iterate_all_solutions() {
     let cfg = Config::new();
-    let ctx = &Context::new(&cfg);
+    let ctx = &Context::new(cfg);
     let solver = Solver::new(ctx);
     let a = &Int::new_const(ctx, "a");
     let b = &Int::new_const(ctx, "b");
@@ -1856,14 +1787,14 @@ fn iterate_all_solutions() {
             .iter()
             .map(|fd| {
                 modifications.push(
-                    fd.apply(&[])
-                        ._eq(&model.get_const_interp(&fd.apply(&[])).unwrap())
+                    fd.apply_empty()
+                        ._eq(&model.get_const_interp(&fd.apply_empty()).unwrap())
                         .not(),
                 );
                 format!(
                     "{} = {}",
                     fd.name(),
-                    model.get_const_interp(&fd.apply(&[])).unwrap()
+                    model.get_const_interp(&fd.apply_empty()).unwrap()
                 )
             })
             .collect::<Vec<_>>()
@@ -1895,8 +1826,7 @@ fn get_version() {
 
 #[test]
 fn test_consequences() {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
+    let ctx = Context::default();
     let solver = Solver::new(&ctx);
     let a = Bool::new_const(&ctx, "a");
     let b = Bool::new_const(&ctx, "b");

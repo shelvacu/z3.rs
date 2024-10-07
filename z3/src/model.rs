@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use z3_sys::*;
 
 use crate::{Context, HasContext, WrappedZ3, FuncInterp, Optimize, Solver, make_z3_object};
-use crate::ast::{Ast, FuncDecl, Dynamic};
+use crate::ast::{Ast, FuncDecl, FuncDeclTrait, Dynamic};
 
 make_z3_object! {
     /// Model for the constraints inserted into the logical context.

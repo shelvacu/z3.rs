@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use z3_sys::*;
 
 use crate::{Context, Symbol, HasContext, WrappedZ3};
-use crate::ast::{Ast, FuncDecl, Sort, make_ast_object, unop};
+use crate::ast::{Ast, FuncDecl, FuncDeclTrait, Sort, make_ast_object, unop};
 
 make_ast_object! {
     /// Recursive function declaration. Every function has an associated declaration.
@@ -12,7 +12,7 @@ make_ast_object! {
     /// the sort (i.e., type) of each of its arguments. This is the function declaration type
     /// you should use if you want to add a definition to your function, recursive or not.
     ///
-    /// This struct can dereference into a [`FuncDecl`] to access its methods.
+    /// This also implements [`FuncDeclTrait`]
     ///
     /// # See also:
     ///
@@ -46,17 +46,12 @@ impl<'ctx> RecFuncDecl<'ctx> {
         }
     }
 
-    unop! {
-        pub fn get_range(Z3_get_range) -> Sort<'ctx>;
-    }
-
     /// Adds the body to a recursive function.
     ///
     /// ```
-    /// # use z3::{Config, Context, RecFuncDecl, Solver, Sort, Symbol, ast::Int, SatResult};
+    /// # use z3::{*, ast::*};
     /// # use std::convert::TryInto;
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # let ctx = Context::default();
     /// let mut f = RecFuncDecl::new(
     ///     &ctx,
     ///     "f",
@@ -84,45 +79,27 @@ impl<'ctx> RecFuncDecl<'ctx> {
     /// ```
     ///
     /// Note that `args` should have the types corresponding to the `domain` of the `RecFuncDecl`.
-    pub fn add_def<T: Ast<'ctx>>(&self, args: &[T], body: impl Ast<'ctx>) {
+    pub fn add_def<T: Ast<'ctx>>(&self, args: &[&T], body: &impl Ast<'ctx>) {
         assert!(args.iter().all(|arg| arg.ctx() == body.ctx()));
         assert_eq!(self.ctx(), body.ctx());
 
-        let mut args: Vec<_> = args.iter().map(|s| **s).collect();
-        assert_eq!(body.sort(), self.get_range());
+        let mut args: Vec<_> = args.iter().map(|s| ***s).collect();
+        assert_eq!(body.sort(), self.range());
         unsafe {
             Z3_add_rec_def(
                 **self.ctx(),
                 **self,
                 self.arity(),
                 args.as_mut_ptr(),
-                *body,
+                **body,
             );
         };
         self.check_error().unwrap();
     }
 
-    /// Return the number of arguments of a function declaration.
-    ///
-    /// If the function declaration is a constant, then the arity is `0`.
-    ///
-    /// ```
-    /// # use z3::{Config, Context, FuncDecl, Solver, Sort, Symbol};
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
-    /// let f = FuncDecl::new(
-    ///     &ctx,
-    ///     "f",
-    ///     &[&Sort::int(&ctx), &Sort::real(&ctx)],
-    ///     &Sort::int(&ctx));
-    /// assert_eq!(f.arity(), 2);
-    /// ```
-    pub fn arity(&self) -> u32 {
-        self.check_error_pass(unsafe { Z3_get_arity(**self.ctx(), **self)}).unwrap()
-    }
-
-
     pub fn as_func_decl(&self) -> FuncDecl<'ctx> {
         unsafe { FuncDecl::wrap(self.ctx(), **self) }
     }
 }
+
+impl<'ctx> FuncDeclTrait<'ctx> for RecFuncDecl<'ctx> {}

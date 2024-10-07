@@ -70,7 +70,7 @@ impl<'ctx> FuncInterp<'ctx> {
     }
 }
 
-impl<'ctx> fmt::Debug for FuncInterp<'ctx> {
+impl<'ctx> fmt::Display for FuncInterp<'ctx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "[")?;
         self.get_entries().into_iter().try_for_each(|e| {
@@ -90,9 +90,15 @@ impl<'ctx> fmt::Debug for FuncInterp<'ctx> {
             if n > 1 {
                 write!(f, "]")?;
             }
-            write!(f, " -> {:?}, ", e.get_value())
+            write!(f, " -> {}, ", e.get_value())
         })?;
-        write!(f, "else -> {:?}", self.get_else())?;
+        write!(f, "else -> {}", self.get_else())?;
         write!(f, "]")
+    }
+}
+
+impl<'ctx> fmt::Debug for FuncInterp<'ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "FuncInterp({self})")
     }
 }

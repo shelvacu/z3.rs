@@ -62,7 +62,7 @@ impl<'ctx> Goal<'ctx> {
         self.check_error().unwrap();
     }
 
-    /// Copy a goal `g` from its current context to the context `target`.
+    /// Move a goal `g` from its current context to the context `target`.
     #[allow(clippy::needless_lifetimes)]
     pub fn translate<'dest_ctx>(self, target: &'dest_ctx Context) -> Goal<'dest_ctx> {
         unsafe {
@@ -78,7 +78,7 @@ impl<'ctx> Goal<'ctx> {
         self.check_error_pass(unsafe { Z3_goal_precision(**self.ctx(), **self) }).unwrap()
     }
 
-    pub fn iter_formulas<'a>(&'a self) -> impl Iterator<Item = Dynamic<'ctx>> + 'a
+    pub fn iter_formulas<'a>(&'a self) -> impl Iterator<Item = Bool<'ctx>> + 'a
     {
         let goal_size = self.get_size();
         let z3_ctx = **self.ctx();
@@ -86,12 +86,12 @@ impl<'ctx> Goal<'ctx> {
         (0..goal_size).map(move |i| {
             let formula = unsafe { Z3_goal_formula(z3_ctx, z3_goal, i) };
             let formula = self.check_error_ptr(formula).unwrap();
-            unsafe { Dynamic::wrap(self.ctx(), formula) }
+            unsafe { Bool::wrap(self.ctx(), formula) }
         })
     }
 
     /// Return a vector of the formulas from the given goal.
-    pub fn get_formulas(&self) -> Vec<Dynamic<'ctx>>
+    pub fn get_formulas(&self) -> Vec<Bool<'ctx>>
     {
         self.iter_formulas().collect()
     }

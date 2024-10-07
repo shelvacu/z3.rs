@@ -110,10 +110,16 @@ macro_rules! make_z3_object {
         }
 
         $(
-        impl<'ctx> ::std::fmt::Debug for $name<'ctx> {
+        impl<'ctx> ::std::fmt::Display for $name<'ctx> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let msg = $crate::HasContext::check_error_str(self, unsafe { $to_str(**self._ctx, self._ptr) }).map_err(|_| ::std::fmt::Error)?;
-                write!(f, "{}({})", stringify!($name), msg)
+                write!(f, "{}", msg)
+            }
+        }
+
+        impl<'ctx> ::std::fmt::Debug for $name<'ctx> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, "{}({})", stringify!($name), self)
             }
         }
         )?
@@ -205,3 +211,4 @@ pub use goal::Goal;
 pub use tactic::{ApplyResult,Tactic};
 pub use probe::Probe;
 pub use statistics::{Statistics, StatisticsValue};
+pub use datatype_builder::{DatatypeAccessor, DatatypeBuilder};

@@ -19,9 +19,9 @@ mod pattern;
 mod sort;
 
 pub use sort::{Sort, SortDiffers};
-pub use func_decl::FuncDecl;
-pub use pattern::Pattern;
+pub use func_decl::{FuncDecl, FuncDeclTrait};
 pub use rec_func_decl::RecFuncDecl;
+pub use pattern::Pattern;
 
 /// A struct to represent when an ast is not a function application.
 #[derive(Debug)]
@@ -129,23 +129,20 @@ make_ast_object! {
 make_ast_object! {
     /// [`Ast`] node representing a regular expression.
     /// ```
-    /// use z3::ast;
-    /// use z3::{Config, Context, Solver, SatResult};
-    ///
-    /// let cfg = Config::new();
-    /// let ctx = &Context::new(&cfg);
-    /// let solver = Solver::new(&ctx);
-    /// let s = ast::String::new_const(ctx, "s");
+    /// # use z3::{*, ast::*};
+    /// let ctx = &Context::default();
+    /// let solver = Solver::new(ctx);
+    /// let s = AstString::new_const(ctx, "s");
     ///
     /// // the regexp representing foo[a-c]*
-    /// let a = ast::Regexp::concat(ctx, &[
-    ///     &ast::Regexp::literal(ctx, "foo"),
-    ///     &ast::Regexp::range(ctx, &'a', &'c').star()
+    /// let a = Regexp::concat(ctx, &[
+    ///     &Regexp::literal(ctx, "foo"),
+    ///     &Regexp::range(ctx, 'a', 'c').star()
     /// ]);
     /// // the regexp representing [a-z]+
-    /// let b = ast::Regexp::range(ctx, &'a', &'z').plus();
+    /// let b = Regexp::range(ctx, 'a', 'z').plus();
     /// // intersection of a and b is non-empty
-    /// let intersect = ast::Regexp::intersect(ctx, &[&a, &b]);
+    /// let intersect = Regexp::intersect(ctx, &[&a, &b]);
     /// solver.assert(&s.regex_matches(&intersect));
     /// assert!(solver.check() == SatResult::Sat);
     /// ```
@@ -411,6 +408,10 @@ pub trait Ast<'ctx>: WrappedZ3<'ctx, Pointed = Z3_ast> + fmt::Debug + HasContext
             Ok(unsafe { FuncDecl::wrap_check_error(self.ctx(), func_decl) })
         }
     }
+
+    fn dynamic(&self) -> Dynamic<'ctx> {
+        unsafe { Dynamic::wrap(self.ctx(), **self) }
+    }
 }
 
 /// One Ast type is translateable to another Ast type iff:
@@ -423,7 +424,7 @@ where
     F: Ast<'f_ctx>,
     Self: Ast<'t_ctx> + Translateable<F>,
 {
-    fn translate(from: &F, dest: &'t_ctx Context) -> Self;
+    fn translate(&self, dest: &'f_ctx Context) -> F;
 }
 
 impl<'f_ctx,'t_ctx,F,T> AstTranslate<'f_ctx,'t_ctx,F> for T
@@ -432,12 +433,12 @@ where
     F: Ast<'f_ctx>,
     T: Ast<'t_ctx>,
 {
-    fn translate(from: &F, dest: &'t_ctx Context) -> T {
-        if from.ctx() == dest {
+    fn translate(&self, dest: &'f_ctx Context) -> F {
+        if self.ctx() == dest {
             panic!("Cannot translate from one context to the same context");
         }
         unsafe {
-            T::wrap_check_error(dest, Z3_translate(**from.ctx(), **from, **dest))
+            F::wrap_check_error(dest, Z3_translate(**self.ctx(), **self, **dest))
         }
     }
 }
@@ -456,7 +457,7 @@ macro_rules! impl_from_try_into_dynamic {
     ($ast:ident, $as_ast:ident) => {
         impl<'ctx> From<$ast<'ctx>> for Dynamic<'ctx> {
             fn from(ast: $ast<'ctx>) -> Self {
-                Dynamic::from_ast(ast)
+                Dynamic::from_ast(&ast)
             }
         }
 
@@ -741,10 +742,8 @@ impl<'ctx> Int<'ctx> {
     ///
     /// # Examples
     /// ```
-    /// # use z3::{ast, Config, Context, SatResult, Solver};
-    /// # use z3::ast::Ast;
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # use z3::{*, ast::*};
+    /// # let ctx = Context::default();
     /// # let solver = Solver::new(&ctx);
     /// let bv = ast::BV::new_const(&ctx, "x", 32);
     /// solver.assert(&bv._eq(&ast::BV::from_i64(&ctx, -3, 32)));
@@ -1176,10 +1175,8 @@ impl<'ctx> BV<'ctx> {
     ///
     /// # Examples
     /// ```
-    /// # use z3::{ast, Config, Context, SatResult, Solver};
-    /// # use z3::ast::Ast;
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # use z3::{*, ast::*};
+    /// # let ctx = Context::default();
     /// # let solver = Solver::new(&ctx);
     /// let i = ast::Int::new_const(&ctx, "x");
     /// solver.assert(&i._eq(&ast::Int::from_i64(&ctx, -3)));
@@ -1425,8 +1422,8 @@ impl<'ctx> Array<'ctx> {
 
     /// n-ary Array read. `idxs` are the indices of the array that gets read.
     /// This is useful for applying lambdas.
-    pub fn select_n<T: Ast<'ctx>>(&self, idxs: &[T]) -> Dynamic<'ctx> {
-        let idxs: Vec<NonNull<Z3_ast>> = idxs.iter().map(|idx| **idx).collect();
+    pub fn select_n<T: Ast<'ctx>>(&self, idxs: &[&T]) -> Dynamic<'ctx> {
+        let idxs: Vec<NonNull<Z3_ast>> = idxs.iter().map(|idx| ***idx).collect();
 
         unsafe {
             Dynamic::wrap_check_error(self.ctx(), {
@@ -1446,15 +1443,15 @@ impl<'ctx> Array<'ctx> {
     /// and the `value` _must be_ of the array's `range` sort.
     //
     // We avoid the trinop! macro because the arguments have non-Self types
-    pub fn store(&self, index: impl Ast<'ctx>, value: impl Ast<'ctx>) -> Self
+    pub fn store(&self, index: &impl Ast<'ctx>, value: &impl Ast<'ctx>) -> Self
     {
         unsafe {
             Self::wrap_check_error(self.ctx(), {
                 Z3_mk_store(
                     **self.ctx(),
                     **self,
-                    *index,
-                    *value,
+                    **index,
+                    **value,
                 )
             })
         }
@@ -1464,11 +1461,10 @@ impl<'ctx> Array<'ctx> {
     ///
     /// # Examples
     /// ```
-    /// # use z3::{ast, Config, Context, ast::{Array, Int}, Sort};
-    /// # use z3::ast::Ast;
+    /// # use z3::*;
+    /// # use z3::ast::*;
     /// # use std::convert::TryInto;
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # let ctx = Context::default();
     /// let arr = Array::const_array(&ctx, &Sort::int(&ctx), &Int::from_u64(&ctx, 9));
     /// assert!(arr.is_const_array());
     /// let arr2 = Array::fresh_const(&ctx, "a", &Sort::int(&ctx), &Sort::int(&ctx));
@@ -1478,7 +1474,7 @@ impl<'ctx> Array<'ctx> {
         // python:
         // is_app_of(a, Z3_OP_CONST_ARRAY)
         // >> is_app(a) and a.decl().kind() == Z3_OP_CONST_ARRAY
-        self.is_app() && matches!(self.decl().kind(), DeclKind::CONST_ARRAY)
+        self.is_app() && matches!(self.decl().decl_kind(), DeclKind::CONST_ARRAY)
     }
 }
 
@@ -1580,8 +1576,8 @@ impl<'ctx> Set<'ctx> {
 }
 
 impl<'ctx> Dynamic<'ctx> {
-    pub fn from_ast(ast: impl Ast<'ctx>) -> Self {
-        unsafe { Self::wrap(ast.ctx(), *ast) }
+    pub fn from_ast(ast: &impl Ast<'ctx>) -> Self {
+        unsafe { Self::wrap(ast.ctx(), **ast) }
     }
 
     pub fn new_const<S: Into<Symbol>>(ctx: &'ctx Context, name: S, sort: &Sort<'ctx>) -> Self {
@@ -1849,18 +1845,17 @@ impl<'ctx> Regexp<'ctx> {
 ///
 /// # Examples
 /// ```
-/// # use z3::{ast, Config, Context, FuncDecl, Pattern, SatResult, Solver, Sort, Symbol};
-/// # use z3::ast::Ast;
+/// # use z3::*;
+/// # use z3::ast::*;
 /// # use std::convert::TryInto;
-/// # let cfg = Config::new();
-/// # let ctx = Context::new(&cfg);
+/// # let ctx = Context::default();
 /// # let solver = Solver::new(&ctx);
 /// let f = FuncDecl::new(&ctx, "f", &[&Sort::int(&ctx)], &Sort::int(&ctx));
 ///
-/// let x = ast::Int::new_const(&ctx, "x");
-/// let f_x: ast::Int = f.apply(&[&x]).try_into().unwrap();
+/// let x = Int::new_const(&ctx, "x");
+/// let f_x: Int = f.apply(&[&x]).try_into().unwrap();
 /// let f_x_pattern: Pattern = Pattern::new(&ctx, &[ &f_x ]);
-/// let forall: ast::Bool = ast::forall_const(
+/// let forall: Bool = forall_const(
 ///     &ctx,
 ///     &[&x],
 ///     &[&f_x_pattern],
@@ -1876,7 +1871,7 @@ impl<'ctx> Regexp<'ctx> {
 /// ```
 pub fn forall_const<'ctx, T: Ast<'ctx>>(
     ctx: &'ctx Context,
-    bounds: &[T],
+    bounds: &[&T],
     patterns: &[&Pattern<'ctx>],
     body: &Bool<'ctx>,
 ) -> Bool<'ctx> {
@@ -1888,7 +1883,7 @@ pub fn forall_const<'ctx, T: Ast<'ctx>>(
         return body.clone();
     }
 
-    let bounds: Vec<_> = bounds.iter().map(|a| **a).collect();
+    let bounds: Vec<_> = bounds.iter().map(|a| ***a).collect();
     let patterns: Vec<_> = patterns.iter().map(|p| ***p).collect();
 
     unsafe {
@@ -1910,18 +1905,17 @@ pub fn forall_const<'ctx, T: Ast<'ctx>>(
 ///
 /// # Examples
 /// ```
-/// # use z3::{ast, Config, Context, FuncDecl, SatResult, Solver, Sort, Symbol, Pattern};
-/// # use z3::ast::Ast;
+/// # use z3::*;
+/// # use z3::ast::*;
 /// # use std::convert::TryInto;
-/// # let cfg = Config::new();
-/// # let ctx = Context::new(&cfg);
+/// # let ctx = Context::default();
 /// # let solver = Solver::new(&ctx);
 /// let f = FuncDecl::new(&ctx, "f", &[&Sort::int(&ctx)], &Sort::int(&ctx));
 ///
-/// let x = ast::Int::new_const(&ctx, "x");
-/// let f_x: ast::Int = f.apply(&[&x]).try_into().unwrap();
+/// let x = Int::new_const(&ctx, "x");
+/// let f_x: Int = f.apply(&[&x]).try_into().unwrap();
 /// let f_x_pattern: Pattern = Pattern::new(&ctx, &[ &f_x ]);
-/// let exists: ast::Bool = ast::exists_const(
+/// let exists: Bool = exists_const(
 ///     &ctx,
 ///     &[&x],
 ///     &[&f_x_pattern],
@@ -1932,12 +1926,12 @@ pub fn forall_const<'ctx, T: Ast<'ctx>>(
 /// assert_eq!(solver.check(), SatResult::Sat);
 /// let model = solver.get_model().unwrap();;
 ///
-/// let f_f_3: ast::Int = f.apply(&[&f.apply(&[&ast::Int::from_u64(&ctx, 3)])]).try_into().unwrap();
+/// let f_f_3: Int = f.apply(&[&f.apply(&[&Int::from_u64(&ctx, 3)])]).try_into().unwrap();
 /// assert_eq!(3, model.eval(&f_f_3, true).unwrap().as_u64().unwrap());
 /// ```
 pub fn exists_const<'ctx, T: Ast<'ctx>>(
     ctx: &'ctx Context,
-    bounds: &[T],
+    bounds: &[&T],
     patterns: &[&Pattern<'ctx>],
     body: &Bool<'ctx>,
 ) -> Bool<'ctx> {
@@ -1949,7 +1943,7 @@ pub fn exists_const<'ctx, T: Ast<'ctx>>(
         return body.clone();
     }
 
-    let bounds: Vec<_> = bounds.iter().map(|a| **a).collect();
+    let bounds: Vec<_> = bounds.iter().map(|a| ***a).collect();
     let patterns: Vec<_> = patterns.iter().map(|p| ***p).collect();
 
     unsafe {
@@ -1976,13 +1970,8 @@ pub fn exists_const<'ctx, T: Ast<'ctx>>(
 ///
 /// # Examples
 /// ```
-/// # use z3::{
-/// #     ast::{lambda_const, Ast as _, Int, Dynamic},
-/// #     Config, Context, Solver, SatResult,
-/// # };
-/// #
-/// # let cfg = Config::new();
-/// # let ctx = Context::new(&cfg);
+/// # use z3::{*, ast::*};
+/// # let ctx = Context::default();
 /// # let solver = Solver::new(&ctx);
 /// #
 /// let input = Int::fresh_const(&ctx, "");
@@ -2008,10 +1997,10 @@ pub fn exists_const<'ctx, T: Ast<'ctx>>(
 /// ```
 pub fn lambda_const<'ctx, T: Ast<'ctx>>(
     ctx: &'ctx Context,
-    bounds: impl IntoIterator<Item = T>,
+    bounds: &[&T],
     body: &Dynamic<'ctx>,
 ) -> Array<'ctx> {
-    let bounds: Vec<_> = bounds.into_iter().map(|a| *a).collect();
+    let bounds: Vec<_> = bounds.iter().map(|a| ***a).collect();
 
     unsafe {
         Array::wrap_check_error(

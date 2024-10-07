@@ -67,12 +67,11 @@ impl<'ctx> Tactic<'ctx> {
     /// # Example
     ///
     /// ```
-    /// use z3::{Config, Context, Tactic};
+    /// # use z3::{Config, Context, Tactic};
     ///
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
-    /// let tactics: Vec<_> = Tactic::list_all(&ctx).filter_map(|r| r.ok()).collect();
-    /// assert!(tactics.contains(&"ufbv"));
+    /// let ctx = Context::default();
+    /// let tactics: Vec<_> = Tactic::list_all(&ctx).collect();
+    /// assert!(tactics.contains(&"ufbv".to_string()));
     /// ```
     pub fn list_all(
         ctx: &'ctx Context,
@@ -87,10 +86,9 @@ impl<'ctx> Tactic<'ctx> {
     /// # Example
     ///
     /// ```
-    /// use z3::{Config, Context, Tactic};
+    /// # use z3::{Config, Context, Tactic};
     ///
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
+    /// let ctx = Context::default();
     /// let tactic = Tactic::new(&ctx, "nlsat");
     /// ```
     ///
@@ -222,10 +220,9 @@ impl<'ctx> Tactic<'ctx> {
     /// # Example
     ///
     /// ```
-    /// use z3::{ast, Config, Context, SatResult, Tactic};
+    /// # use z3::{ast, Config, Context, SatResult, Tactic};
     ///
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
+    /// let ctx = Context::default();
     /// let tactic = Tactic::new(&ctx, "qfnra");
     /// let solver = tactic.solver();
     ///

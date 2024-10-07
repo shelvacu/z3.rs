@@ -1,6 +1,6 @@
 use z3::{
     ast,
-    ast::{Array, Ast, AstKind, FuncDecl, Sort, Bool, Dynamic, Float, Int, Real, BV},
+    ast::{Array, Ast, AstKind, FuncDecl, FuncDeclTrait, Sort, Bool, Dynamic, Float, Int, Real, BV},
     Context, DeclKind, SatResult, Solver,
 };
 
@@ -84,7 +84,7 @@ fn test_pow_ret_real() {
     let ctx = Context::default();
     let x = Int::new_const(&ctx, "x");
     let y = x.power(&x);
-    assert!(y.get_sort() == Sort::real(&ctx));
+    assert!(y.sort() == Sort::real(&ctx));
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn test_ast_children() {
     let a = Bool::new_const(&ctx, "a");
     assert_eq!(a.num_children(), 0);
     assert_eq!(a.nth_child(0), None);
-    assert_eq!(a.children(), vec![]);
+    assert!(a.children().is_empty());
 
     let not_a = a.not();
     assert_eq!(not_a.num_children(), 1);
@@ -200,7 +200,7 @@ fn test_ast_children() {
 
     let b = Bool::new_const(&ctx, "b");
     // This is specifically testing for an array of values, not an array of slices
-    let a_or_b = Bool::or(&ctx, &[a.clone(), b.clone()]);
+    let a_or_b = Bool::or(&ctx, &[&a, &b]);
     assert_eq!(a_or_b.num_children(), 2);
     assert_bool_child(&a_or_b, 0, &a);
     assert_bool_child(&a_or_b, 1, &b);
@@ -237,9 +237,9 @@ fn test_ast_attributes() {
     let b = Bool::from_bool(&ctx, false);
     let not_a = a.not();
     let a_or_b = &Bool::or(&ctx, &[&a, &b]);
-    assert_eq!(b.decl().kind(), DeclKind::FALSE);
-    assert_eq!(not_a.decl().kind(), DeclKind::NOT);
-    assert_eq!(a_or_b.decl().kind(), DeclKind::OR);
+    assert_eq!(b.decl().decl_kind(), DeclKind::FALSE);
+    assert_eq!(not_a.decl().decl_kind(), DeclKind::NOT);
+    assert_eq!(a_or_b.decl().decl_kind(), DeclKind::OR);
 
     assert_ast_attributes(&a, true);
     assert_ast_attributes(&b, true);
@@ -253,7 +253,7 @@ fn test_ast_attributes() {
     );
     assert_ast_attributes(&BV::new_const(&ctx, "bv", 512), true);
     assert_ast_attributes(&Real::new_const(&ctx, "r"), true);
-    assert_ast_attributes(&ast::String::new_const(&ctx, "st"), true);
+    assert_ast_attributes(&ast::AstString::new_const(&ctx, "st"), true);
 
     let int_expr = Int::new_const(&ctx, "i");
     let set_expr = ast::Set::new_const(&ctx, "set", &Sort::int(&ctx));
@@ -267,13 +267,13 @@ fn test_func_decl_attributes() {
     let ctx = Context::default();
 
     let const_decl = FuncDecl::new(&ctx, "c", &[], &Sort::bool(&ctx));
-    assert_eq!(const_decl.kind(), DeclKind::UNINTERPRETED);
-    assert_eq!(const_decl.name(), "c");
+    assert_eq!(const_decl.decl_kind(), DeclKind::UNINTERPRETED);
+    assert_eq!(const_decl.name(), "c".into());
     assert_eq!(const_decl.arity(), 0);
 
     let unary_decl = FuncDecl::new(&ctx, "unary", &[&Sort::bool(&ctx)], &Sort::bool(&ctx));
-    assert_eq!(unary_decl.kind(), DeclKind::UNINTERPRETED);
-    assert_eq!(unary_decl.name(), "unary");
+    assert_eq!(unary_decl.decl_kind(), DeclKind::UNINTERPRETED);
+    assert_eq!(unary_decl.name(), "unary".into());
     assert_eq!(unary_decl.arity(), 1);
 
     let binary_decl = FuncDecl::new(
@@ -282,8 +282,8 @@ fn test_func_decl_attributes() {
         &[&Sort::bool(&ctx), &Sort::bool(&ctx)],
         &Sort::bool(&ctx),
     );
-    assert_eq!(binary_decl.kind(), DeclKind::UNINTERPRETED);
-    assert_eq!(binary_decl.name(), "binary");
+    assert_eq!(binary_decl.decl_kind(), DeclKind::UNINTERPRETED);
+    assert_eq!(binary_decl.name(), "binary".into());
     assert_eq!(binary_decl.arity(), 2);
 }
 
