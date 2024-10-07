@@ -1,6 +1,6 @@
 [package]
 name = "z3-sys"
-version = "0.9"
+version = "0.9.0"
 authors = [
   "Graydon Hoare <graydon@pobox.com>",
   "Bruce Mitchener <bruce.mitchener@gmail.com>",
