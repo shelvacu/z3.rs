@@ -109,15 +109,16 @@ impl<'ctx> Sort<'ctx> {
     ///
     /// assert!(model.eval(&eq, true).unwrap().as_bool().unwrap().as_bool().unwrap());
     /// ```
-    pub fn enumeration<S: Into<Symbol>, const N: usize>(
+    pub fn enumeration<S: Into<Symbol>>(
         ctx: &'ctx Context,
         name: impl Into<Symbol>,
-        enum_names: [S; N],
-    ) -> (Sort<'ctx>, [FuncDecl<'ctx>; N], [FuncDecl<'ctx>; N]) {
+        enum_names: impl IntoIterator<Item = S>,
+    ) -> (Sort<'ctx>, Vec<FuncDecl<'ctx>>, Vec<FuncDecl<'ctx>>) {
         use std::mem::MaybeUninit;
         let name = name.into().as_z3_symbol(ctx);
-        let enum_names = enum_names.map(|s| s.into().as_z3_symbol(ctx));
-        let mut consts_testers:[MaybeUninit<[NonNull<Z3_ast>; N]>; 2] = [MaybeUninit::uninit(); 2];
+        let enum_names:Vec<_> = enum_names.into_iter().map(|s| s.into().as_z3_symbol(ctx)).collect();
+        let mut  enum_consts:Vec<NonNull<Z3_ast>> = Vec::with_capacity(enum_names.len());
+        let mut enum_testers:Vec<NonNull<Z3_ast>> = Vec::with_capacity(enum_names.len());
 
         let sort = unsafe {
             Self::wrap_check_error(
@@ -125,20 +126,20 @@ impl<'ctx> Sort<'ctx> {
                 Z3_mk_enumeration_sort(
                     **ctx,
                     name,
-                    N.try_into().unwrap(),
+                    enum_names.len().try_into().unwrap(),
                     enum_names.as_ptr(),
-                    consts_testers[0].as_mut_ptr().cast::<NonNull<Z3_ast>>(),
-                    consts_testers[1].as_mut_ptr().cast::<NonNull<Z3_ast>>(),
+                    enum_consts.as_mut_ptr(),
+                    enum_testers.as_mut_ptr(),
                 ),
             )
         };
 
-        let enum_consts = unsafe { consts_testers[0].assume_init() };
-        let enum_testers = unsafe { consts_testers[1].assume_init() };
+        unsafe { enum_consts.set_len(enum_names.len()) };
+        unsafe { enum_testers.set_len(enum_names.len()) };
         
         let make_func = |ast| unsafe { FuncDecl::wrap(ctx, ast) };
-        let enum_consts = enum_consts.map(make_func);
-        let enum_testers = enum_testers.map(make_func);
+        let enum_consts = enum_consts.into_iter().map(make_func).collect();
+        let enum_testers = enum_testers.into_iter().map(make_func).collect();
 
         (sort, enum_consts, enum_testers)
     }
