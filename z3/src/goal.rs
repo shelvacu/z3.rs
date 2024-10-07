@@ -2,7 +2,7 @@
 use z3_sys::*;
 
 use crate::{Context, HasContext, WrappedZ3, make_z3_object};
-use crate::ast::{Bool, Dynamic};
+use crate::ast::Bool;
 
 make_z3_object! {
     /// Set of formulas that can be solved and/or transformed using tactics and solvers.

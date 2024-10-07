@@ -114,7 +114,7 @@ impl<'ctx> Sort<'ctx> {
         name: impl Into<Symbol>,
         enum_names: impl IntoIterator<Item = S>,
     ) -> (Sort<'ctx>, Vec<FuncDecl<'ctx>>, Vec<FuncDecl<'ctx>>) {
-        use std::mem::MaybeUninit;
+        
         let name = name.into().as_z3_symbol(ctx);
         let enum_names:Vec<_> = enum_names.into_iter().map(|s| s.into().as_z3_symbol(ctx)).collect();
         let mut  enum_consts:Vec<NonNull<Z3_ast>> = Vec::with_capacity(enum_names.len());
