@@ -13,6 +13,8 @@ make_ast_object! {
     /// the sort (i.e., type) of each of its arguments. Note that, in Z3,
     /// a constant is a function with 0 arguments.
     ///
+    /// See [`FuncDeclTrait`] for most methods you'd care about
+    ///
     /// # See also:
     ///
     /// - [`RecFuncDecl`]
@@ -20,6 +22,66 @@ make_ast_object! {
 }
 
 impl_from_try_into_dynamic!(FuncDecl, as_func_decl);
+
+pub trait FuncDeclTrait<'ctx>: Ast<'ctx> {
+    /// Return the number of arguments of a function declaration.
+    ///
+    /// If the function declaration is a constant, then the arity is `0`.
+    ///
+    /// ```
+    /// # use z3::{*, ast::*};
+    /// # let ctx = Context::default();
+    /// let f = FuncDecl::new(
+    ///     &ctx,
+    ///     "f",
+    ///     &[&Sort::int(&ctx), &Sort::real(&ctx)],
+    ///     &Sort::int(&ctx));
+    /// assert_eq!(f.arity(), 2);
+    /// ```
+    fn arity(&self) -> u32 {
+        self.check_error_pass(unsafe { Z3_get_arity(**self.ctx(), **self)}).unwrap()
+    }
+
+    /// Create a constant (if `args` has length 0) or function application (otherwise).
+    ///
+    /// Note that `args` should have the types corresponding to the `domain` of the `FuncDecl`.
+    fn apply<T: Ast<'ctx>>(&self, args: &[&T]) -> Dynamic<'ctx> {
+        assert!(args.iter().all(|s| s.ctx() == self.ctx()));
+
+        let args: Vec<_> = args.iter().map(|a| ***a).collect();
+
+        unsafe {
+            Dynamic::wrap_check_error(self.ctx(), {
+                Z3_mk_app(
+                    **self.ctx(),
+                    **self,
+                    args.len().try_into().unwrap(),
+                    args.as_ptr(),
+                )
+            })
+        }
+    }
+
+    /// Convenience function for calling `self.apply(&[])` without needing to specify trait bounds
+    fn apply_empty(&self) -> Dynamic<'ctx> {
+        self.apply::<Dynamic<'ctx>>(&[])
+    }
+
+    /// Return the `DeclKind` of this `FuncDecl`.
+    fn decl_kind(&self) -> DeclKind {
+        self.check_error_pass(unsafe { Z3_get_decl_kind(**self.ctx(), **self) }).unwrap()
+    }
+
+    /// Return the name of this `FuncDecl`.
+    fn name(&self) -> Symbol {
+        let symbol = self.check_error_ptr(unsafe { Z3_get_decl_name(**self.ctx(), **self) }).unwrap();
+        unsafe { Symbol::from_z3_symbol(self.ctx(), symbol) }
+    }
+
+    unop! {
+        fn range(Z3_get_range) -> Sort<'ctx>;
+    }
+}
 
 impl<'ctx> FuncDecl<'ctx> {
     pub fn new<S: Into<Symbol>>(
@@ -46,58 +108,6 @@ impl<'ctx> FuncDecl<'ctx> {
             )
         }
     }
-
-    /// Return the number of arguments of a function declaration.
-    ///
-    /// If the function declaration is a constant, then the arity is `0`.
-    ///
-    /// ```
-    /// # use z3::{Config, Context, FuncDecl, Solver, Sort, Symbol};
-    /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
-    /// let f = FuncDecl::new(
-    ///     &ctx,
-    ///     "f",
-    ///     &[&Sort::int(&ctx), &Sort::real(&ctx)],
-    ///     &Sort::int(&ctx));
-    /// assert_eq!(f.arity(), 2);
-    /// ```
-    pub fn arity(&self) -> usize {
-        self.check_error_pass(unsafe { Z3_get_arity(**self.ctx(), **self)}).unwrap().try_into().unwrap()
-    }
-
-    /// Create a constant (if `args` has length 0) or function application (otherwise).
-    ///
-    /// Note that `args` should have the types corresponding to the `domain` of the `FuncDecl`.
-    pub fn apply<T: Ast<'ctx>>(&self, args: &[T]) -> Dynamic<'ctx> {
-        assert!(args.iter().all(|s| s.ctx() == self.ctx()));
-
-        let args: Vec<_> = args.iter().map(|a| **a).collect();
-
-        unsafe {
-            Dynamic::wrap_check_error(self.ctx(), {
-                Z3_mk_app(
-                    **self.ctx(),
-                    **self,
-                    args.len().try_into().unwrap(),
-                    args.as_ptr(),
-                )
-            })
-        }
-    }
-
-    /// Return the `DeclKind` of this `FuncDecl`.
-    pub fn kind(&self) -> DeclKind {
-        self.check_error_pass(unsafe { Z3_get_decl_kind(**self.ctx(), **self) }).unwrap()
-    }
-
-    /// Return the name of this `FuncDecl`.
-    pub fn name(&self) -> Symbol {
-        let symbol = self.check_error_ptr(unsafe { Z3_get_decl_name(**self.ctx(), **self) }).unwrap();
-        unsafe { Symbol::from_z3_symbol(self.ctx(), symbol) }
-    }
-
-    unop! {
-        pub fn range(Z3_get_range) -> Sort<'ctx>;
-    }
 }
+
+impl<'ctx> FuncDeclTrait<'ctx> for FuncDecl<'ctx> {}

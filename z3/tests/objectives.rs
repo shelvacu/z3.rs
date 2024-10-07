@@ -1,4 +1,4 @@
-use z3::ast;
+use z3::ast::*;
 use z3::*;
 
 #[test]
@@ -133,21 +133,21 @@ fn test_optimize_assert_soft_and_get_objectives() {
     assert_eq!(objectives.len(), 1);
     let objective = &objectives[0];
     dbg!(objective);
-    assert_eq!(objective.get_sort(), Sort::real(&ctx));
+    assert_eq!(objective.sort(), Sort::real(&ctx));
     assert_eq!(
         objective.num_children(),
         (0..COUNT).fold(0, |acc, i| acc + (0..i).count()) + 1
     );
 
     for ite in objective.children() {
-        assert_eq!(ite.get_sort(), Sort::real(&ctx));
+        assert_eq!(ite.sort(), Sort::real(&ctx));
         assert_eq!(ite.num_children(), 3);
         let ite_children = ite.children();
         let r#bool = &ite_children[0];
 
         assert_eq!(r#bool.num_children(), 2);
         for child in r#bool.children() {
-            assert_eq!(child.get_sort(), Sort::int(&ctx));
+            assert_eq!(child.sort(), Sort::int(&ctx));
         }
 
         assert_eq!(

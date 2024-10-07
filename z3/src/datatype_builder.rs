@@ -14,13 +14,12 @@ use crate::ast::{FuncDecl, Sort};
 ///
 /// Example:
 /// ```
-/// # use z3::{ast::Int, Config, Context, DatatypeAccessor, DatatypeBuilder, SatResult, Solver, Sort, ast::{Ast, Datatype}};
-/// # let cfg = Config::new();
-/// # let ctx = Context::new(&cfg);
+/// # use z3::{Config, Context, DatatypeAccessor, DatatypeBuilder, SatResult, Solver, ast::{Ast, Sort, Datatype, Int, FuncDeclTrait}};
+/// # let ctx = Context::default();
 /// # let solver = Solver::new(&ctx);
 /// // Like Rust's Option<int> type
 /// let option_int = DatatypeBuilder::new(&ctx, "OptionInt")
-/// .variant("None", vec![])
+/// .variant_empty("None")
 /// .variant(
 ///     "Some",
 ///     vec![("value", DatatypeAccessor::Sort(Sort::int(&ctx)))],
@@ -101,20 +100,26 @@ impl<'ctx> DatatypeBuilder<'ctx> {
         }
     }
 
-    pub fn variant(&mut self, name: &str, fields: Vec<(String, DatatypeAccessor<'ctx>)>) -> &mut Self {
+    pub fn variant(mut self, name: &str, fields: Vec<(impl Into<String>, DatatypeAccessor<'ctx>)>) -> Self {
+        let fields = fields.into_iter().map(|(is, dta)| (is.into(), dta)).collect();
         self.constructors.push((name.to_string(), fields));
 
         self
     }
+    
+    pub fn variant_empty(self, name: &str) -> Self {
+        let vec: Vec<(&'static str, DatatypeAccessor<'ctx>)> = Vec::new();
+        self.variant(name, vec)
+    }
 
     pub fn finish(self) -> DatatypeSort<'ctx> {
-        let mut dtypes = create_datatypes(vec![self]);
+        let mut dtypes = create_datatypes(vec![&self]);
         dtypes.remove(0)
     }
 }
 
 pub fn create_datatypes<'ctx>(
-    datatype_builders: Vec<DatatypeBuilder<'ctx>>,
+    datatype_builders: Vec<&DatatypeBuilder<'ctx>>,
 ) -> Vec<DatatypeSort<'ctx>> {
     let num = datatype_builders.len();
     assert!(num > 0, "At least one DatatypeBuilder must be specified");

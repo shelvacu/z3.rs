@@ -59,7 +59,7 @@ impl<'ctx> Solver<'ctx> {
 
     /// Parse an SMT-LIB2 string with assertions, soft constraints and optimization objectives.
     /// Add the parsed constraints and objectives to the solver.
-    pub fn from_smtlib(&self, source: impl Into<Vec<u8>>) {
+    pub fn from_string(&self, source: impl Into<Vec<u8>>) {
         let source_cstring = CString::new(source).unwrap();
         unsafe {
             Z3_solver_from_string(**self.ctx(), **self, source_cstring.as_ptr());
@@ -91,9 +91,8 @@ impl<'ctx> Solver<'ctx> {
     /// or not.
     ///
     /// ```rust
-    /// use z3::{Config, Context, Solver, ast, SatResult, ast::Bool};
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
+    /// # use z3::{Config, Context, Solver, ast, SatResult, ast::Bool};
+    /// let ctx = Context::default();
     /// let mut solver = Solver::new(&ctx);
     ///
     /// solver.assert(&Bool::from_bool(&ctx, true));

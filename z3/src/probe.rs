@@ -27,12 +27,11 @@ impl<'ctx> Probe<'ctx> {
     /// # Example
     ///
     /// ```
-    /// use z3::{Config, Context, Probe};
+    /// # use z3::{Config, Context, Probe};
     ///
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
-    /// let probes: Vec<_> = Probe::list_all(&ctx).filter_map(|r| r.ok()).collect();
-    /// assert!(probes.contains(&"is-quasi-pb"));
+    /// let ctx = Context::default();
+    /// let probes: Vec<_> = Probe::list_all(&ctx).collect();
+    /// assert!(probes.contains(&"is-quasi-pb".to_string()));
     /// ```
     pub fn list_all(
         ctx: &'ctx Context,
@@ -54,10 +53,9 @@ impl<'ctx> Probe<'ctx> {
     /// # Example
     ///
     /// ```
-    /// use z3::{Config, Context, Probe};
+    /// # use z3::{Config, Context, Probe};
     ///
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
+    /// let ctx = Context::default();
     /// let probe = Probe::new(&ctx, "is-qfbv");
     /// ```
     pub fn new(ctx: &'ctx Context, name: &str) -> Probe<'ctx> {
@@ -75,10 +73,9 @@ impl<'ctx> Probe<'ctx> {
 
     /// Return a probe that always evaluates to val.
     /// ```
-    /// use z3::{Config, Context, Probe};
+    /// # use z3::{Config, Context, Probe};
     ///
-    /// let cfg = Config::new();
-    /// let ctx = Context::new(&cfg);
+    /// let ctx = Context::default();
     /// let probe = Probe::constant(&ctx, 1.0);
     /// ```
     pub fn constant(ctx: &'ctx Context, val: f64) -> Probe<'ctx> {

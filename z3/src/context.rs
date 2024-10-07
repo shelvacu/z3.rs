@@ -20,7 +20,7 @@ use crate::{Config, HasContext};
 /// ```
 /// use z3::{Config, Context};
 /// let cfg = Config::new();
-/// let ctx = Context::new(&cfg);
+/// let ctx = Context::new(cfg);
 /// ```
 ///
 /// # See also:
