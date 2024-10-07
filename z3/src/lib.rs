@@ -171,7 +171,12 @@ pub trait HasContext<'ctx> {
     fn ctx(&self) -> &'ctx Context;
 
     fn check_error_ptr<T: ?Sized>(&self, ptr: *mut T) -> Result<NonNull<T>, Error> {
-        self.check_error().map(|_| NonNull::new(ptr).expect("Result code Ok but null ptr passed in"))
+        self.check_error()?;
+        if let Some(nnptr) = NonNull::new(ptr) {
+            Ok(nnptr)
+        } else {
+            Err(Error{code: ErrorCode::OK, msg: "Result code Ok but null ptr passed in".to_string()})
+        }
     }
 
     fn check_error_pass<T>(&self, thing: T) -> Result<T, Error> {

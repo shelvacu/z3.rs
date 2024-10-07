@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::ffi::CString;
 use std::os::raw::c_uint;
 use std::time::Duration;
+use std::fmt;
 
 use z3_sys::*;
 
@@ -61,6 +62,25 @@ make_z3_object! {
     ;
 }
 
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TacticDescription {
+    pub name: String,
+    pub description: String,
+}
+
+impl TacticDescription {
+    pub fn tactic<'ctx>(&self, ctx: &'ctx Context) -> Tactic<'ctx> {
+        Tactic::new(ctx, &self.name)
+    }
+}
+
+impl fmt::Display for TacticDescription {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.description)
+    }
+}
+
 impl<'ctx> Tactic<'ctx> {
     /// Iterate through the valid tactic names.
     ///
@@ -75,9 +95,14 @@ impl<'ctx> Tactic<'ctx> {
     /// ```
     pub fn list_all(
         ctx: &'ctx Context,
-    ) -> impl Iterator<Item = String> + 'ctx {
+    ) -> impl Iterator<Item = TacticDescription> + 'ctx {
         (0..ctx.num_tactics()).map(move |n| {
-            ctx.get_tactic_name(n)
+            let name = ctx.get_tactic_name(n);
+            let description = ctx.get_tactic_description(&name);
+            TacticDescription {
+                name,
+                description,
+            }
         })
     }
 
@@ -95,8 +120,8 @@ impl<'ctx> Tactic<'ctx> {
     /// # See also
     ///
     /// - [`Tactic::list_all()`]
-    pub fn new(ctx: &'ctx Context, name: &str) -> Tactic<'ctx> {
-        let tactic_name = CString::new(name).unwrap();
+    pub fn new(ctx: &'ctx Context, name: impl AsRef<str>) -> Tactic<'ctx> {
+        let tactic_name = CString::new(name.as_ref()).unwrap();
         unsafe { Self::wrap_check_error(ctx, Z3_mk_tactic(**ctx, tactic_name.as_ptr())) }
     }
 

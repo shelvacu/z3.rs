@@ -102,14 +102,32 @@ impl Context {
         self.update_param_value(k, if v { "true" } else { "false" });
     }
 
+    /// Get the number of tactics available
+    ///
+    /// This corresponds to the C function `Z3_get_num_tactics`
+    ///
+    /// See also [`Tactic::list_tactics`]
     pub fn num_tactics(&self) -> u32 {
         self.check_error_pass(unsafe { Z3_get_num_tactics(**self) }).unwrap()
     }
 
+    /// Get the name of a tactic by index
+    ///
+    /// This corresponds to the C functions `Z3_get_tactic_name`
+    ///
+    /// See also [`Tactic::list_tactics`]
     pub fn get_tactic_name(&self, idx: u32) -> String {
-        let p = self.check_error_pass(unsafe { Z3_get_tactic_name(**self, idx) }).unwrap();
-        assert!(!p.is_null());
-        unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap().to_string()
+        self.check_error_str(unsafe { Z3_get_tactic_name(**self, idx) }).unwrap()
+    }
+
+    /// Get the description of a tactic
+    ///
+    /// This corresponds to the C functions `Z3_tactic_get_descr`
+    ///
+    /// See also [`Tactic::list_tactics`]
+    pub fn get_tactic_description(&self, name: impl AsRef<str>) -> String {
+        let name_cstr = CString::new(name.as_ref()).unwrap();
+        self.check_error_str(unsafe { Z3_tactic_get_descr(**self.ctx(), name_cstr.as_ptr()) }).unwrap()
     }
 
     pub fn num_probes(&self) -> u32 {
@@ -117,9 +135,7 @@ impl Context {
     }
 
     pub fn get_probe_name(&self, idx: u32) -> String {
-        let p = self.check_error_pass(unsafe { Z3_get_probe_name(**self, idx) }).unwrap();
-        assert!(!p.is_null());
-        unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap().to_string()
+        self.check_error_str(unsafe { Z3_get_probe_name(**self, idx) }).unwrap()
     }   
 }
 
