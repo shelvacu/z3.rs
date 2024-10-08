@@ -240,10 +240,19 @@ macro_rules! varop {
             $( #[ $attr ] )*
             $v fn $f(ctx: &'ctx Context, values: &[&Self]) -> $retty
             where
-                $retty: Sized
+                $retty: Sized,
             {
-                assert!(values.iter().all(|v| v.ctx() == ctx));
-                let tmp: Vec<NonNull<<Self as WrappedZ3>::Pointed>> = values.iter().map(|x| ***x).collect();
+                let iter = values.into_iter();
+                let hint = iter.size_hint();
+                let maybe_size = hint.1.unwrap_or(hint.0);
+                let mut tmp: Vec<NonNull<<Self as WrappedZ3>::Pointed>> = Vec::with_capacity(maybe_size);
+                for val in iter {
+                    // let val = val.as_ref();
+                    assert!(val.ctx() == ctx);
+                    tmp.push(***val);
+                }
+                // assert!(values.iter().all(|v| v.ctx() == ctx));
+                // let tmp: Vec<NonNull<<Self as WrappedZ3>::Pointed>> = values.into_iter().map(|x| ***x).collect();
                 let len_u32 = tmp.len().try_into().unwrap();
                 unsafe {
                     <$retty as $crate::WrappedZ3>::wrap_check_error(ctx, {
