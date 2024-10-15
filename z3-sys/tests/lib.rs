@@ -1,29 +1,43 @@
 use std::ffi::{CStr, CString};
+use std::ptr::NonNull;
 use z3_sys::*;
+
+trait NonNullShortcut {
+    type Ret;
+    fn nn(self) -> NonNull<Self::Ret>;
+}
+
+impl<T> NonNullShortcut for *mut T {
+    type Ret = T;
+
+    fn nn(self) -> NonNull<T> {
+        NonNull::new(self).unwrap()
+    }
+}
 
 #[test]
 fn smoketest() {
     unsafe {
-        let cfg = Z3_mk_config();
-        let ctx = Z3_mk_context(cfg);
+        let cfg = Z3_mk_config().nn();
+        let ctx = Z3_mk_context(cfg).nn();
 
         let str_x = CString::new("x").unwrap();
         let str_y = CString::new("y").unwrap();
 
-        let sym_x = Z3_mk_string_symbol(ctx, str_x.as_ptr());
-        let sym_y = Z3_mk_string_symbol(ctx, str_y.as_ptr());
+        let sym_x = Z3_mk_string_symbol(ctx, str_x.as_ptr()).nn();
+        let sym_y = Z3_mk_string_symbol(ctx, str_y.as_ptr()).nn();
 
-        let int_sort = Z3_mk_int_sort(ctx);
+        let int_sort = Z3_mk_int_sort(ctx).nn();
 
-        let const_x = Z3_mk_const(ctx, sym_x, int_sort);
-        let const_y = Z3_mk_const(ctx, sym_y, int_sort);
-        let gt = Z3_mk_gt(ctx, const_x, const_y);
+        let const_x = Z3_mk_const(ctx, sym_x, int_sort).nn();
+        let const_y = Z3_mk_const(ctx, sym_y, int_sort).nn();
+        let gt = Z3_mk_gt(ctx, const_x, const_y).nn();
 
-        let solver = Z3_mk_simple_solver(ctx);
+        let solver = Z3_mk_simple_solver(ctx).nn();
         Z3_solver_assert(ctx, solver, gt);
         assert_eq!(Z3_solver_check(ctx, solver), Z3_L_TRUE);
 
-        let model = Z3_solver_get_model(ctx, solver);
+        let model = Z3_solver_get_model(ctx, solver).nn();
 
         // Check that the string-value of the model is as expected
         let model_s = Z3_model_to_string(ctx, model);
@@ -33,8 +47,8 @@ fn smoketest() {
         assert_eq!(model_elements.len(), 2);
 
         // Grab the actual constant values out of the model
-        let mut interp_x: Z3_ast = const_x;
-        let mut interp_y: Z3_ast = const_y;
+        let mut interp_x: NonNull<Z3_ast> = const_x;
+        let mut interp_y: NonNull<Z3_ast> = const_y;
         assert!(Z3_model_eval(ctx, model, const_x, true, &mut interp_x));
         assert!(Z3_model_eval(ctx, model, const_y, true, &mut interp_y));
 

@@ -91,7 +91,7 @@ impl<'ctx> Tactic<'ctx> {
     ///
     /// let ctx = Context::default();
     /// let tactics: Vec<_> = Tactic::list_all(&ctx).collect();
-    /// assert!(tactics.contains(&"ufbv".to_string()));
+    /// assert!(tactics.into_iter().any(|t| t.name == "ufbv".to_string()));
     /// ```
     pub fn list_all(
         ctx: &'ctx Context,

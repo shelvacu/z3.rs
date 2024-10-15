@@ -11,19 +11,40 @@
 //! Example:
 //!
 //! ```
+//! use std::ptr::NonNull;
 //! use z3_sys::*;
 //!
 //! unsafe {
-//!     let cfg = Z3_mk_config();
-//!     let ctx = Z3_mk_context(cfg);
+//!     let cfg = NonNull::new(Z3_mk_config()).unwrap();
+//!     let ctx = NonNull::new(Z3_mk_context(cfg)).unwrap();
 //!
-//!     let a = Z3_mk_not(ctx, Z3_mk_eq(ctx, Z3_mk_false(ctx), Z3_mk_true(ctx)));
-//!     let b = Z3_mk_not(ctx, Z3_mk_iff(ctx, Z3_mk_false(ctx), Z3_mk_true(ctx)));
-//!     assert_eq!(Z3_mk_true(ctx), Z3_simplify(ctx, a));
-//!     assert_eq!(Z3_mk_true(ctx), Z3_simplify(ctx, b));
+//!     let z3_true = NonNull::new(Z3_mk_true(ctx)).unwrap();
+//!     let z3_false = NonNull::new(Z3_mk_false(ctx)).unwrap();
+//!     let a = NonNull::new(Z3_mk_not(ctx, 
+//!         NonNull::new(
+//!             Z3_mk_eq(ctx, z3_false, z3_true)
+//!         ).unwrap()
+//!     )).unwrap();
+//!     let b = NonNull::new(Z3_mk_not(ctx,
+//!         NonNull::new(
+//!             Z3_mk_iff(ctx, z3_false, z3_true)
+//!         ).unwrap()
+//!     )).unwrap();
+//!     assert_eq!(
+//!         z3_true,
+//!         NonNull::new(
+//!             Z3_simplify(ctx, a)
+//!         ).unwrap(),
+//!     );
+//!     assert_eq!(
+//!         z3_true,
+//!         NonNull::new(
+//!             Z3_simplify(ctx, b)
+//!         ).unwrap()
+//!     );
 //!
-//!     Z3_del_config(cfg);
 //!     Z3_del_context(ctx);
+//!     Z3_del_config(cfg);
 //! }
 //! ```
 
