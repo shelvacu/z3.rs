@@ -72,7 +72,7 @@ impl<'ctx> Sort<'ctx> {
     }
 
     pub fn seq(ctx: &'ctx Context, elt: &Sort<'ctx>) -> Sort<'ctx> {
-        unsafe { Self::wrap(ctx, Z3_mk_seq_sort(ctx.z3_ctx, elt.z3_sort)) }
+        unsafe { Self::wrap_check_error(ctx, Z3_mk_seq_sort(**ctx, **elt)) }
     }
 
     /// Create an enumeration sort.

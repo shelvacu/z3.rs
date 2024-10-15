@@ -132,11 +132,6 @@ make_ast_object! {
 }
 
 make_ast_object! {
-    /// [`Ast`] node representing a datatype value.
-    pub struct Datatype<'ctx>;
-}
-
-make_ast_object! {
     /// [`Ast`] node representing a regular expression.
     /// ```
     /// # use z3::{*, ast::*};
@@ -1599,8 +1594,8 @@ impl<'ctx> Seq<'ctx> {
     pub fn new_const<S: Into<Symbol>>(ctx: &'ctx Context, name: S, eltype: &Sort<'ctx>) -> Self {
         let sort = Sort::seq(ctx, eltype);
         unsafe {
-            Self::wrap(ctx, {
-                Z3_mk_const(ctx.z3_ctx, name.into().as_z3_symbol(ctx), sort.z3_sort)
+            Self::wrap_check_error(ctx, {
+                Z3_mk_const(**ctx, name.into().as_z3_symbol(ctx), *sort)
             })
         }
     }
@@ -1608,10 +1603,10 @@ impl<'ctx> Seq<'ctx> {
     pub fn fresh_const(ctx: &'ctx Context, prefix: &str, eltype: &Sort<'ctx>) -> Self {
         let sort = Sort::seq(ctx, eltype);
         unsafe {
-            Self::wrap(ctx, {
+            Self::wrap_check_error(ctx, {
                 let pp = CString::new(prefix).unwrap();
                 let p = pp.as_ptr();
-                Z3_mk_fresh_const(ctx.z3_ctx, p, sort.z3_sort)
+                Z3_mk_fresh_const(**ctx, p, *sort)
             })
         }
     }
@@ -1620,9 +1615,9 @@ impl<'ctx> Seq<'ctx> {
     /// Use [`Seq::nth`] to get just the element.
     pub fn at(&self, index: &Int<'ctx>) -> Self {
         unsafe {
-            Self::wrap(
-                self.ctx,
-                Z3_mk_seq_at(self.ctx.z3_ctx, self.z3_ast, index.z3_ast),
+            Self::wrap_check_error(
+                self.ctx(),
+                Z3_mk_seq_at(**self.ctx(), **self, **index),
             )
         }
     }
@@ -1631,10 +1626,10 @@ impl<'ctx> Seq<'ctx> {
     ///
     /// # Examples
     /// ```
-    /// # use z3::{ast, Config, Context, Solver, Sort};
-    /// # use z3::ast::{Ast, Bool, Int, Seq};
+    /// # use z3::*;
+    /// # use z3::ast::*;
     /// # let cfg = Config::new();
-    /// # let ctx = Context::new(&cfg);
+    /// # let ctx = Context::new(cfg);
     /// # let solver = Solver::new(&ctx);
     /// let seq = Seq::fresh_const(&ctx, "", &Sort::bool(&ctx));
     ///
@@ -1648,15 +1643,15 @@ impl<'ctx> Seq<'ctx> {
     /// ```
     pub fn nth(&self, index: &Int<'ctx>) -> Dynamic<'ctx> {
         unsafe {
-            Dynamic::wrap(
-                self.ctx,
-                Z3_mk_seq_nth(self.ctx.z3_ctx, self.z3_ast, index.z3_ast),
+            Dynamic::wrap_check_error(
+                self.ctx(),
+                Z3_mk_seq_nth(**self.ctx(), **self, **index),
             )
         }
     }
 
     pub fn length(&self) -> Int<'ctx> {
-        unsafe { Int::wrap(self.ctx, Z3_mk_seq_length(self.ctx.z3_ctx, self.z3_ast)) }
+        unsafe { Int::wrap_check_error(self.ctx(), Z3_mk_seq_length(**self.ctx(), **self)) }
     }
 }
 
@@ -1772,7 +1767,7 @@ impl<'ctx> Dynamic<'ctx> {
     /// Returns `None` if the `Dynamic` is not actually a `Seq`.
     pub fn as_seq(&self) -> Option<Seq<'ctx>> {
         match self.sort_kind() {
-            SortKind::Seq => Some(unsafe { Seq::wrap(self.ctx, self.z3_ast) }),
+            SortKind::Seq => Some(unsafe { Seq::wrap(self.ctx(), **self) }),
             _ => None,
         }
     }
